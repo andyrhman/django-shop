@@ -18,6 +18,8 @@ from core.models import Token, User
 from decouple import config
 from google.oauth2 import id_token
 from google.auth.transport.urllib3 import Request as GoogleRequest
+from authorization.signals import user_registered
+
 # Create your views here.
 class RegisterAPIView(APIView):
     def post(self, request):
@@ -28,7 +30,10 @@ class RegisterAPIView(APIView):
 
         serializer = UserSerializer(data=data, context={"request": request})
         serializer.is_valid(raise_exception=True)
-        serializer.save()
+        user = serializer.save() # * Declaring user variable for email send listener
+
+        # Emit only for registration
+        user_registered.send(sender=self.__class__, user=user)
 
         return Response({"message": "Successfully Registered"})
 
