@@ -58,7 +58,7 @@ class User(AbstractUser):
     email = models.EmailField(unique=True)
     username = models.CharField(max_length=255, unique=True)
     is_user = models.BooleanField(default=True)
-    is_verified = models.BooleanField(default=True)
+    is_verified = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -71,7 +71,7 @@ class User(AbstractUser):
 
 class Token(models.Model):
     id = models.UUIDField(default=uuid.uuid4, primary_key=True, editable=False)
-    email = models.EmailField(unique=True)
+    email = models.EmailField()
     user = models.ForeignKey(User, null=True, related_name='token', on_delete=models.SET_NULL)
     token = models.CharField(max_length=255, unique=True)
     expiresAt = models.DateTimeField()
@@ -79,7 +79,7 @@ class Token(models.Model):
 
 class Reset(models.Model):
     id = models.UUIDField(default=uuid.uuid4, primary_key=True, editable=False)
-    email = models.EmailField(unique=True)
+    email = models.EmailField()
     token = models.CharField(max_length=255, unique=True)
     expiresAt = models.DateTimeField()
     used = models.BooleanField(default=False)
@@ -123,7 +123,7 @@ class Order(models.Model):
     id = models.UUIDField(default=uuid.uuid4, primary_key=True, editable=False)
     transaction_id = models.CharField(max_length=255, null=True)
     name = models.CharField(max_length=255)
-    email = models.EmailField(unique=True)
+    email = models.EmailField()
     created_at = models.DateTimeField(auto_now_add=True)
     completed = models.BooleanField(default=False)
     user = models.ForeignKey(User, null=True, on_delete=models.SET_NULL, related_name='order_users')

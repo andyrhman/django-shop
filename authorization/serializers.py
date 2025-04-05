@@ -1,6 +1,7 @@
+from dataclasses import field
 from rest_framework import serializers
 
-from core.models import User
+from core.models import Token, User
 
 class UserSerializer(serializers.ModelSerializer):
 
@@ -28,3 +29,8 @@ class UserSerializer(serializers.ModelSerializer):
             instance.set_password(password)
         instance.save()
         return instance
+
+class TokenSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Token
+    fields = "__all__"
