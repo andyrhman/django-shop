@@ -117,7 +117,7 @@ class Address(models.Model):
     zip = models.CharField(max_length=20)
     country = models.CharField(max_length=255)
     phone = models.CharField(max_length=50)
-    user = models.OneToOneField(User, null=False, on_delete=models.CASCADE, related_name='address_users')
+    user = models.OneToOneField(User, null=True, on_delete=models.CASCADE, related_name='address_users')
 
 class Order(models.Model):
     id = models.UUIDField(default=uuid.uuid4, primary_key=True, editable=False)

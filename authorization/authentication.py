@@ -7,28 +7,34 @@ from core.models import User
 
 class JWTAuthentication(BaseAuthentication):
     def authenticate(self, request):
-        is_user = 'api/user' in request.path 
-
         token = request.COOKIES.get('user_session')
-        
         if not token:
             return None
-        
+
         try:
             payload = jwt.decode(token, config('JWT_SECRET'), algorithms=['HS256'])
         except jwt.ExpiredSignatureError:
             raise exceptions.AuthenticationFailed('Unauthenticated')
 
-        if (is_user and payload['scope'] != 'user') or (not is_user and payload['scope'] != 'admin'):
-            raise exceptions.AuthenticationFailed('Invalid Scope!')
+        path = request.path.lower()
+        # 1) admin-only
+        if path.startswith('/api/admin/'):
+            if payload['scope'] != 'admin':
+                raise exceptions.AuthenticationFailed('Invalid Scope!')
+        # 2) user-only
+        elif path.startswith('/api/user/'):
+            if payload['scope'] != 'user':
+                raise exceptions.AuthenticationFailed('Invalid Scope!')
+        # 3) “generic” api: allow either
+        elif path.startswith('/api/'):
+            if payload['scope'] not in ('user', 'admin'):
+                raise exceptions.AuthenticationFailed('Invalid Scope!')
+        else:
+            # not an API route we care about
+            return None
 
         user = User.objects.get(id=payload['user_id'])
-        
-        if user is None:
-            raise exceptions.AuthenticationFailed('Unauthenticated')
-         
-        return (user, None)  
-            
+        return (user, None)
     
     @staticmethod
     def generate_jwt(id, scope):
