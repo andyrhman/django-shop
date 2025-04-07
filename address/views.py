@@ -58,8 +58,9 @@ class AddressDetailAPIView(
         return self.retrieve(request, *args, **kwargs)
 
     def put(self, request, *args, **kwargs):
-        # full update; if you want partial, use patch + partial_update
-        return self.partial_update(request, *args, **kwargs)
+        response = super().partial_update(request, *args, **kwargs)
+        response.status_code = status.HTTP_202_ACCEPTED
+        return response
 
     def delete(self, request, *args, **kwargs):
         return self.destroy(request, *args, **kwargs)

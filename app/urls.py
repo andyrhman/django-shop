@@ -1,7 +1,4 @@
-"""
-URL configuration for app project.
-
-The `urlpatterns` list routes URLs to views. For more information please see:
+""" URL configuration for app project.
     https://docs.djangoproject.com/en/5.1/topics/http/urls/
 Examples:
 Function views
@@ -23,6 +20,8 @@ urlpatterns = [
     path('api/admin/', include('authorization.urls')),
     path('api/admin/', include('user.urls')),
     path('api/admin/', include('address.urls_admin')),
+    path('api/admin/', include('category.urls_admin')),
     path('api/', include('authorization.urls_verify')),
-    path('api/', include('address.urls'))
+    path('api/', include('address.urls')),
+    path('api/', include('category.urls'))
 ]
