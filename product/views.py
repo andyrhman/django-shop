@@ -3,6 +3,7 @@ from rest_framework import generics, mixins, status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from django.db.models import Q
 from authorization.authentication import JWTAuthentication
 from core.models import Product, ProductImages, ProductVariation
 from product.serializers import ProductAdminSerializer, ProductCreateSerializer, ProductImagesCreateSerializer, ProductImagesSerializer, ProductSerializer, ProductVariationCreateSerializer, ProductVariationSerializer
@@ -116,22 +117,80 @@ class ProductImagesCDAPIView(
     
 class ProductsAPIView(generics.ListAPIView):
     serializer_class = ProductSerializer
-    queryset = Product.objects.all().order_by('-updated_at')
+    queryset = Product.objects.all()
+
+    def get_queryset(self):
+        # Start with the base queryset and include related objects if needed.
+        queryset = super().get_queryset().select_related('category').prefetch_related('products_variation')
+        
+        # --- SEARCH ---
+        search = self.request.query_params.get("search", "").strip()
+        if search:
+            queryset = queryset.filter(
+                Q(title__icontains=search) | Q(description__icontains=search)
+            )
+        
+        # --- FILTER BY VARIANT ---
+        filter_by_variant = self.request.query_params.get("filterByVariant", "").strip()
+        if filter_by_variant:
+            variants = [v.strip() for v in filter_by_variant.split(",") if v.strip()]
+            queryset = queryset.filter(products_variation__name__in=variants).distinct()
+        
+        # --- FILTER BY CATEGORY ---
+        filter_by_category = self.request.query_params.get("filterByCategory", "").strip()
+        if filter_by_category:
+            categories = [c.strip() for c in filter_by_category.split(",") if c.strip()]
+            queryset = queryset.filter(category__name__in=categories)
+        
+        # --- SORTING ---
+        sort_by_price = self.request.query_params.get("sortByPrice", "").strip().lower()
+        sort_by_date = self.request.query_params.get("sortByDate", "").strip().lower()
+        
+        if sort_by_price:
+
+            if sort_by_price == "asc":
+                queryset = queryset.order_by("-price")
+            else:
+                queryset = queryset.order_by("price")
+        elif sort_by_date:
+            if sort_by_date == "newest":
+                queryset = queryset.order_by("-created_at")
+            else:
+                queryset = queryset.order_by("created_at")
+        else:
+            queryset = queryset.order_by("-updated_at")
+        
+        return queryset
+
+    def get(self, request, *args, **kwargs):
+        queryset = self.get_queryset()
+        serializer = self.serializer_class(queryset, many=True)
+        return Response(serializer.data)
+    
+class ProductAvgRatingAPIView(generics.RetrieveAPIView):
+    queryset = Product.objects.all()
+    lookup_field = 'id'
+    serializer_class = ProductSerializer
     
     def get(self, request, *args, **kwargs):
-        products = self.get_queryset()
+        response = super().retrieve(request, *args, **kwargs)
         
-        s = request.query_params.get("search", "")
-        if s:
-            products = list(
-                [
-                    p
-                    for p in products
-                    if (s.lower() in p.title.lower())
-                    or (s.lower() in p.description.lower())
-                ]
-            )
-            
-        serializer = self.serializer_class(products, many=True)
+        # ? We will fetch only the averageRating to show in the response
+        average_rating = response.data.get('averageRating')
         
-        return Response(serializer.data)
+        return Response({"averageRating": average_rating})
+    
+class ProductVariantsAPIView(generics.ListAPIView):
+    serializer_class = ProductVariationSerializer
+    queryset = ProductVariation.objects.all()
+    
+    def get(self, request, *args, **kwargs):
+        return self.list(request, *args, **kwargs)
+    
+class ProductAPIView(generics.RetrieveAPIView):
+    serializer_class = ProductSerializer
+    queryset = Product.objects.all()
+    lookup_field = 'slug'
+    
+    def get(self, request, *args, **kwargs):
+        return self.retrieve(request, *args, **kwargs)
