@@ -40,7 +40,13 @@ INSTALLED_APPS = [
     "rest_framework",
     # "corsheaders",
     'core',
-    'authorization'
+    'authorization',
+    'address',
+    'category',
+    'product',
+    'user',
+    'upload',
+    'cloudinary'
 ]
 
 MIDDLEWARE = [
@@ -93,7 +99,6 @@ DATABASES = {
         },
     }
 }
-
 
 # Password validation
 # https://docs.djangoproject.com/en/5.1/ref/settings/#auth-password-validators
