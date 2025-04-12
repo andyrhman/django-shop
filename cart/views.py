@@ -4,6 +4,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from django.db.models import Q
+from rest_framework.views import APIView
 from authorization.authentication import JWTAuthentication
 from cart.serializers import CartAdminSerializer, CartCreateSerializer, CartQuantityUpdateSerializer, CartSerializer
 from core.models import Cart, User
@@ -122,3 +123,26 @@ class CartCRUDAPIView(
         response.status = status.HTTP_204_NO_CONTENT
         
         return response
+    
+class TotalCartAPIView(APIView):
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, *args, **kwargs):
+        user = request.user
+
+        cart_items = Cart.objects.filter(user=user, completed=False)
+
+        # Initialize totals
+        total_items = 0
+        total_price = 0.0
+
+        # Loop through the cart items and sum quantities and total price
+        for item in cart_items:
+            total_items += item.quantity
+            total_price += item.price * item.quantity
+
+        return Response({
+            "totalItems": total_items,
+            "totalPrice": total_price,
+        })
