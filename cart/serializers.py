@@ -70,9 +70,7 @@ class CartCreateSerializer(serializers.ModelSerializer):
         defaults = {
             "quantity": input_quantity,
             "price": validated_data.get("price", product.price),
-            "product_title": validated_data.get("product_title", getattr(product, "title", "")),
-            "completed": validated_data.get("completed", False),
-            "order": validated_data.get("order", None)
+            "product_title": validated_data.get("product_title", product.title),
         }
         
         cart_item, created = Cart.objects.get_or_create(
@@ -87,4 +85,17 @@ class CartCreateSerializer(serializers.ModelSerializer):
             cart_item.save()
             
         return cart_item
+
+class CartQuantityUpdateSerializer(serializers.ModelSerializer):
+    
+    class Meta:
+        model = Cart
+        fields = ['quantity']
+        
+    def update(self, instance, validated_data):
+        instance.quantity = validated_data.get('quantity', instance.quantity)
+        instance.save()
+        
+        return instance
+        
         

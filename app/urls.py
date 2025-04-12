@@ -23,7 +23,7 @@ urlpatterns = [
     path('api/admin/', include('category.urls_admin')),
     path('api/admin/', include('product.urls_admin')),
     path('api/admin/', include('upload.urls')),
-    path('api/admin/', include('cart.urls')),
+    path('api/admin/', include('cart.urls_admin')),
     path('api/', include('authorization.urls_verify')),
     path('api/', include('address.urls')),
     path('api/', include('category.urls')),
