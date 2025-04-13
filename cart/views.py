@@ -144,5 +144,5 @@ class TotalCartAPIView(APIView):
 
         return Response({
             "totalItems": total_items,
-            "totalPrice": total_price,
+            "totalPrice": total_price
         })
