@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html>
+  <head><meta charset="utf-8" /></head>
+  <body>
+    <h1>🎉 Your order {{ order_id }} is complete!</h1>
+    <p>Total paid: {{ order_total }}</p>
+    <ul>
+      {% for item in products %}
+      <li>
+        <strong>{{ item.title }}</strong> – {{ item.variant }}  
+        x{{ item.quantity }} @ {{ item.price }}  
+        {% if item.image %}<br><img src="{{ item.image }}" width="80"/>{% endif %}
+      </li>
+      {% endfor %}
+    </ul>
+    <p>Thank you for shopping with us!</p>
+  </body>
+</html>

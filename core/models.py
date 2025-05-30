@@ -130,11 +130,11 @@ class Order(models.Model):
     
     @property
     def total(self):
-        return sum(item.quantity * item.price for item in self.order_items.all())
+        return sum(item.quantity * item.price for item in self.order_items_order.all())
 
     @property
     def total_orders(self):
-        return self.order_items.count()
+        return self.order_items_order.count()
 
 class OrderItemStatus(models.TextChoices):
     SEDANG_DIKEMAS = 'Sedang Dikemas', 'Sedang Dikemas'

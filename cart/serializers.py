@@ -1,4 +1,7 @@
 from rest_framework import serializers
+from rest_framework.exceptions import ValidationError
+from rest_framework.response import Response
+from rest_framework.status import HTTP_404_NOT_FOUND
 
 from core.models import Cart, Product, ProductVariation, User
 
@@ -45,15 +48,23 @@ class CartCreateSerializer(serializers.ModelSerializer):
         model = Cart
         fields = ['quantity', 'product', 'variant']
         
-    def validate_product(self, value):
-        if not Product.objects.filter(id=value).exists():
-            raise serializers.ValidationError("Product does not exists")
-        return value
-    
-    def validate_variant(self, value):
-        if not ProductVariation.objects.filter(id=value).exists():
-            raise serializers.ValidationError("Product variation does not exists")
-        return value
+    def validate(self, data):
+        # 1) ensure product exists
+        try:
+            product = Product.objects.get(id=data['product'])
+        except Product.DoesNotExist:
+            raise ValidationError({"product": "Product does not exist."})
+
+        # 2) ensure variant exists *and* belongs to that product
+        try:
+            variant = ProductVariation.objects.get(id=data['variant'], product=product)
+        except ProductVariation.DoesNotExist:
+            raise ValidationError({"variant": "Product variant does not exist for this product."})
+
+        # stash the actual instances for create()
+        data['product_obj'] = product
+        data['variant_obj'] = variant
+        return data
     
     def create(self, validated_data):
         request = self.context.get("request")
@@ -65,7 +76,10 @@ class CartCreateSerializer(serializers.ModelSerializer):
         input_quantity = validated_data.pop("quantity", 1)
         
         variant_id = validated_data.pop("variant", [])
-        variant = ProductVariation.objects.get(id=variant_id)
+        variant = ProductVariation.objects.get(id=variant_id, product=product_id)
+
+        if not variant:
+            return Response({"message": "Product variant does not exists"}, status=HTTP_404_NOT_FOUND)
         
         defaults = {
             "quantity": input_quantity,

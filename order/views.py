@@ -1,17 +1,19 @@
 import traceback
+from rest_framework import status
+from rest_framework.exceptions import NotFound, ValidationError
 import stripe
 from decouple import config
 from django.db import transaction
 from django.db.models import Q
-from rest_framework import generics
+from rest_framework import generics, serializers
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from authorization.authentication import JWTAuthentication
-from core.models import Address, Cart, Order, OrderItem, User
+from core.models import Address, Cart, Order, OrderItem, OrderItemStatus, User
 from order.serializers import OrderSerializer
-
+from order.signals import order_completed
 
 class OrderListAPIView(generics.ListAPIView):
     authentication_classes = [JWTAuthentication]
@@ -38,7 +40,7 @@ class OrderListAPIView(generics.ListAPIView):
         serializer = self.serializer_class(queryset, many=True)
         return Response(serializer.data)
     
-class OrderCreateAPIView(APIView):
+class CreateOrderAPIView(APIView):
     authentication_classes = [JWTAuthentication]
     permission_classes = [IsAuthenticated]
     
@@ -46,73 +48,109 @@ class OrderCreateAPIView(APIView):
     def post(self, request):
         user = request.user
         
-        data = request.data
-        
+        cart_payload = request.data.get("carts", [])
+                
         address = Address.objects.filter(user=user).first()
         
         if not address:
             return Response({"message": "Please create your shipping address first"})
         
-        try:
-            order = Order()
-            order.name = user.fullName
-            order.email = user.email
-            order.user = user
-            order.save()
-            
-            line_items = []
-            
-            for c in data["carts"]:
-                cart = Cart.objects.filter(id=c["cart_id"], user=user)
-                
-                if not cart:
-                    return Response({"message": "Cart not found"})
-                
-                if cart[0].completed == True:
-                    return Response({"message": "Invalid order, please add new order."})
-                
-                orderItem = OrderItem()
-                orderItem.order = order
-                orderItem.product_title = cart[0].product_title
-                orderItem.price = cart[0].price
-                orderItem.quantity = cart[0].quantity
-                orderItem.product = cart[0].product
-                orderItem.variant = cart[0].variant
-                orderItem.save()
-                
-                cart[0].order = order
-                cart[0].save()
-                
-                line_items.append({
-                    'price_data': {
-                        'currency': 'idr',
-                        'unit_amount': int(cart[0].price),
-                        'product_data': {
-                            'name': cart[0].product_title + ' - Variant ' + cart[0].variant.name,
-                            'description': cart[0].product.description,
-                            'images': [
-                                cart[0].product.image
-                            ],
-                        },
-                    },
-                    'quantity': cart[0].quantity
-                })
+        # Extract cart_ids, fetch them all in one go
+        cart_ids = [c.get("cart_id") for c in cart_payload]
+        carts = list(Cart.objects.filter(id__in=cart_ids, user=user))
 
-            stripe.api_key = config('STRIPE_SECRET_KEY')
+        # Check for missing carts
+        if len(carts) != len(cart_ids):
+            # someone passed an invalid cart_id
+            raise NotFound("One or more carts were not found.")
 
-            source = stripe.checkout.Session.create(
-                success_url='http://localhost:5000/success?source={CHECKOUT_SESSION_ID}',
-                cancel_url='http://localhost:5000/error',
-                payment_method_types=['card'],
-                line_items=line_items,
-                mode='payment'
+        # Check none are already completed
+        already_done = [c for c in carts if c.completed]
+        if already_done:
+            raise ValidationError("One or more carts have already been checked out.")
+        
+        order = Order.objects.create(
+            name=user.fullName,
+            email=user.email,
+            user=user
+        )
+        
+        line_items = []
+        
+        for cart in carts:
+            OrderItem.objects.create(
+                order=order,
+                product_title=cart.product_title,
+                price=cart.price,
+                quantity=cart.quantity,
+                product=cart.product,
+                variant=cart.variant,
+                status=OrderItemStatus.SEDANG_DIKEMAS,
             )
+            # attach the cart to the order too
+            cart.order = order
+            cart.completed = False  # or leave as-is until confirm
+            cart.save()
 
-            order.transaction_id = source['id']
-            order.save()
+            line_items.append({
+                'price_data': {
+                    'currency': 'idr',
+                    'unit_amount': int(cart.price),
+                    'product_data': {
+                        'name': f"{cart.product_title} - Variant {cart.variant.name}",
+                        'description': cart.product.description,
+                        'images': [cart.product.image],
+                    },
+                },
+                'quantity': cart.quantity
+            })
 
-            return Response(source)
+        stripe.api_key = config('STRIPE_SECRET_KEY')
+        session = stripe.checkout.Session.create(
+            success_url='http://localhost:5000/success?source={CHECKOUT_SESSION_ID}',
+            cancel_url='http://localhost:5000/error',
+            payment_method_types=['card'],
+            line_items=line_items,
+            mode='payment'
+        )
 
-        except Exception:
-            traceback.print_exc()
-            transaction.rollback()
+        order.transaction_id = session['id']
+        order.save()
+
+        return Response(session, status=status.HTTP_201_CREATED)
+            
+class ConfirmOrderAPIVIew(APIView):
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
+    queryset = Order.objects.all()
+    serializer_class = OrderSerializer
+    
+    def post(self, request, *args, **kwargs):
+        user = request.user
+        
+        order = Order.objects.filter(transaction_id=request.data.get("source")).first()
+        
+        if not order:
+            raise serializers.ValidationError("Order not found")
+        
+        carts = Cart.objects.filter(order=order, user=user)
+        
+        order_items = OrderItem.objects.filter(order=order)
+        
+        if len(carts) == 0:
+            return Response({"message": "Forbidden"}, status=status.HTTP_403_FORBIDDEN)
+        
+        for cart in carts:
+            cart.completed = True
+            cart.save()
+            
+        for order_item in order_items:
+            order_item.status = OrderItemStatus.SELESAI
+            order_item.save()
+            
+        order.completed = True
+        
+        order.save()
+        
+        order_completed.send(sender=self.__class__, order=order)
+        return Response(self.serializer_class(order).data, status=status.HTTP_202_ACCEPTED)
