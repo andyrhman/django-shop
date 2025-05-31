@@ -1,6 +1,6 @@
 from rest_framework import serializers
 
-from core.models import Order, OrderItem, Product, ProductVariation
+from core.models import Order, OrderItem, OrderItemStatus, Product, ProductVariation
 
 class ProductSerializer(serializers.ModelSerializer):
     
@@ -27,4 +27,21 @@ class OrderSerializer(serializers.ModelSerializer):
     class Meta:
         model = Order
         fields = "__all__"
+
+class ChangeOrderStatusSerializer(serializers.ModelSerializer):
+    status = serializers.ChoiceField(
+        choices=OrderItemStatus.choices,
+        error_messages={
+            "invalid_choice": "Status tidak valid. Pilihan yang tersedia adalah: Sedang Dikemas, Dikirim, atau Selesai."
+        }
+    )
+    
+    class Meta:
+        model = OrderItem
+        fields = ['status']
+    
+    def update(self, instance, validated_data):
+        instance.status = validated_data.get("status", instance.status)
+        instance.save()
         
+        return instance

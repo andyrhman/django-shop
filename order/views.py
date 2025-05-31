@@ -12,7 +12,7 @@ from rest_framework.views import APIView
 
 from authorization.authentication import JWTAuthentication
 from core.models import Address, Cart, Order, OrderItem, OrderItemStatus, User
-from order.serializers import OrderSerializer
+from order.serializers import ChangeOrderStatusSerializer, OrderItemSerializer, OrderSerializer
 from order.signals import order_completed
 
 class OrderListAPIView(generics.ListAPIView):
@@ -163,3 +163,22 @@ class GetUserOrder(generics.ListAPIView):
     
     def get_queryset(self):
         return Order.objects.filter(user=self.request.user)
+    
+class GetOrderItem(generics.RetrieveAPIView):
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
+    queryset = OrderItem.objects.all()
+    serializer_class = OrderItemSerializer
+    lookup_field = 'id'
+    
+class ChangeOrderStatus(generics.UpdateAPIView):
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
+    queryset = OrderItem.objects.all()
+    serializer_class = ChangeOrderStatusSerializer
+    lookup_field = 'id'
+    
+    def put(self, request, *args, **kwargs):
+        response = super().partial_update(request, *args, **kwargs)
+        response.status_code = status.HTTP_202_ACCEPTED
+        return response
