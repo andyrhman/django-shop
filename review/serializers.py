@@ -48,9 +48,7 @@ class ProductVariationSerializer(serializers.ModelSerializer):
 class ReviewSerializer(serializers.ModelSerializer):
     user = UserSerializer(read_only=True)
     product = ProductSerializer(read_only=True)
-    order = OrderSerializer(read_only=True)
-    variants = ProductVariationSerializer(read_only=True)
-    
+
     class Meta:
         model = Review
         fields = "__all__"
