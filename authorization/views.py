@@ -6,6 +6,7 @@ from django.conf import settings
 from django.core.exceptions import ObjectDoesNotExist
 from django.core.mail import send_mail
 from django.template.loader import render_to_string
+from django.views.generic import TemplateView
 from rest_framework import exceptions, status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -73,6 +74,11 @@ class LoginAPIView(APIView):
 
         return response
 
+class RegisterPageView(TemplateView):
+    template_name = "register.html"
+
+class LoginPageView(TemplateView):
+    template_name = "login.html"
 
 class UserAPIView(APIView):
     authentication_classes = [JWTAuthentication]
