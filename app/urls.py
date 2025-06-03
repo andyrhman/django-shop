@@ -13,12 +13,15 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path, include
+from django.views.generic import TemplateView
 
 urlpatterns = [
+   path('', TemplateView.as_view(template_name='index.html'), name='home'),
+ 
     path('admin/', admin.site.urls),
     path('', include('authorization.urls_template')),
-    path('api/user/', include('authorization.urls')),
-    path('api/admin/', include('authorization.urls')),
+    path('api/user/',  include(('authorization.urls', 'auth'), namespace='user_auth')),
+    path('api/admin/', include(('authorization.urls', 'auth'), namespace='admin_auth')),
     path('api/admin/', include('user.urls')),
     path('api/admin/', include('address.urls_admin')),
     path('api/admin/', include('category.urls_admin')),

@@ -18,6 +18,7 @@ from core.models import Token, User
 from decouple import config
 from google.oauth2 import id_token
 from google.auth.transport.urllib3 import Request as GoogleRequest
+from django.views.generic import TemplateView
 from authorization.signals import user_registered
 
 # Create your views here.
@@ -74,11 +75,6 @@ class LoginAPIView(APIView):
 
         return response
 
-class RegisterPageView(TemplateView):
-    template_name = "register.html"
-
-class LoginPageView(TemplateView):
-    template_name = "login.html"
 
 class UserAPIView(APIView):
     authentication_classes = [JWTAuthentication]
@@ -308,3 +304,9 @@ class GoogleAuthAPIView(APIView):
             samesite="Lax",
         )
         return response
+
+class RegisterPageView(TemplateView):
+    template_name = "auth/register.html"
+
+class LoginPageView(TemplateView):
+    template_name = "auth/login.html"

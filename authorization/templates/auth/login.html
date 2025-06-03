@@ -16,7 +16,7 @@
           {% endif %}
           password:   e.target.password.value,
         };
-        const resp = await fetch("{% url 'api-login' %}", {
+        const resp = await fetch("{% url 'user_auth:api-login' %}", {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',

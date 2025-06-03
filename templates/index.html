@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <title>Home Page</title>
+    <meta name="description" content="">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+  </head>
+
+  <body>
+    <h1 id="welcome-heading">Welcome back!</h1>
+
+    <script>
+      async function loadUserName() {
+        try {
+          // send the cookie along with the request
+          const resp = await fetch('/api/user/', {
+            method: 'GET',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include'
+          });
+
+          if (!resp.ok) {
+            console.error('Failed to load user:', resp.status, await resp.text());
+            return;
+          }
+
+          const user = await resp.json();
+          const h1 = document.getElementById('welcome-heading');
+          h1.innerText = `Welcome back, ${user.fullName}!`;
+
+        } catch (err) {
+          console.error('Error fetching user data:', err);
+        }
+      }
+
+      // run after DOM is ready
+      window.addEventListener('DOMContentLoaded', loadUserName);
+    </script>
+  </body>
+</html>
