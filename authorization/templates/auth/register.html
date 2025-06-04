@@ -14,7 +14,7 @@
           password: e.target.password.value,
           confirm_password: e.target.confirm_password.value,
         };
-        const resp = await fetch("{% url 'api-register' %}", {
+        const resp = await fetch("{% url 'user_auth:api-register' %}", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
