@@ -1,12 +1,11 @@
-from django.shortcuts import render
-from rest_framework import generics, mixins, status
+from django.db.models.functions import Coalesce
+from rest_framework import generics, mixins
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
-from rest_framework.views import APIView
-from django.db.models import Q
+from django.db.models import Sum, Q, IntegerField, Value
 from authorization.authentication import JWTAuthentication
 from core.models import Product, ProductImages, ProductVariation
-from product.serializers import ProductAdminSerializer, ProductCreateSerializer, ProductImagesCreateSerializer, ProductImagesSerializer, ProductSerializer, ProductVariationCreateSerializer, ProductVariationSerializer
+from product.serializers import OnlyProductSerializer, ProductAdminSerializer, ProductCreateSerializer, ProductImagesCreateSerializer, ProductImagesSerializer, ProductSerializer, ProductVariationCreateSerializer, ProductVariationSerializer
 
 # Create your views here.
 class ProductListCreateAPIView(
@@ -194,3 +193,26 @@ class ProductAPIView(generics.RetrieveAPIView):
     
     def get(self, request, *args, **kwargs):
         return self.retrieve(request, *args, **kwargs)
+    
+class NewlyAddedProductAPIView(generics.ListAPIView):
+    serializer_class = OnlyProductSerializer
+
+    def get_queryset(self):
+        return Product.objects.order_by('-created_at')[:8]
+
+class BestSellingProductAPIView(generics.ListAPIView):
+    serializer_class = OnlyProductSerializer
+
+    def get_queryset(self):
+        qs = Product.objects.annotate(
+            total_sold=Coalesce(
+                Sum(
+                    'order_items_products__quantity',
+                    filter=Q(order_items_products__order__completed=True)
+                ),
+                Value(0),
+                output_field=IntegerField()
+            )
+        ).order_by('-total_sold')
+
+        return qs[:6]

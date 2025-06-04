@@ -66,12 +66,8 @@ class ProductAdminSerializer(serializers.ModelSerializer):
         ]
 
 class ProductCreateSerializer(serializers.ModelSerializer):
-    # * The body request for foreign keys, category, product images, product variations
-    
-    # ? We use serializers.UUIDField since the body request only needs single uuid
     category = serializers.UUIDField(write_only=True)
     
-    # ? We use serializers.ListField here because the body request needs multiple objects inside the array
     images = serializers.ListField(
         child=serializers.CharField(), write_only=True
     )
@@ -84,28 +80,27 @@ class ProductCreateSerializer(serializers.ModelSerializer):
         model = Product
         fields = ['title', 'description', 'image', 'price', 'category', 'images', 'variants']
         
-    def validate_category(self, value): # ? the function name should follow the name of the variables above, example --> validate_thevariablename
-        if not Category.objects.filter(id=value).exists():
+    def validate(self, data):
+        
+        try:
+            category = Category.objects.get(id=data['category'])
+        except Category.DoesNotExist:
             raise serializers.ValidationError("Category does not exist")
-        return value
+        
+        data['category'] = category
+        
+        return data
     
     def create(self, validated_data):
-        # ? Just to make sure inside the pop bracket should be the same as the serializer ListField
-        # ? you could say this look like a body request
         images = validated_data.pop('images', [])
         variants = validated_data.pop('variants', [])
         
-        # ? Just to make sure inside the pop bracket should be the same as the serializer UUIDField
-        cat_id = validated_data.pop('category', [])
-        category = Category.objects.filter(id=cat_id)
-        
-        # ? Title to slug
         title = validated_data.get('title')
         slug = slugify(title)
         
         product = Product.objects.create(
             slug=slug,
-            category=category,
+            category=validated_data.pop('category'),
             **validated_data
         )
         
@@ -125,7 +120,6 @@ class ProductCreateSerializer(serializers.ModelSerializer):
 
     # ? If you have a foreign key that needs to be updated then use this function, besides that ignore this function
     def update(self, instance, validated_data):
-        # Handle the category update conversion
         cat_id = validated_data.pop('category', None)
         if cat_id is not None:
             try:
@@ -201,3 +195,10 @@ class ProductImagesCreateSerializer(serializers.ModelSerializer):
             images.append(image)
 
         return images
+    
+class OnlyProductSerializer(serializers.ModelSerializer):
+    category = CategorySerializer(read_only=True)
+    total_sold = serializers.IntegerField(read_only=True) 
+    class Meta:
+        model = Product
+        fields = ['id', 'title', 'slug', 'description', 'image', 'price', 'category', 'total_sold']
