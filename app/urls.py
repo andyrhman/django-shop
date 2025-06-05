@@ -16,7 +16,7 @@ from django.urls import path, include
 from django.views.generic import TemplateView
 
 urlpatterns = [
-   path('', TemplateView.as_view(template_name='index.html'), name='home'),
+    path('', TemplateView.as_view(template_name='index.html'), name='home'),
  
     path('admin/', admin.site.urls),
     path('', include('authorization.urls_template')),
@@ -25,7 +25,7 @@ urlpatterns = [
     path('api/admin/', include('user.urls')),
     path('api/admin/', include('address.urls_admin')),
     path('api/admin/', include('category.urls_admin')),
-    path('api/admin/', include('product.urls_admin')),
+    path('api/admin/', include(('product.urls_admin', 'product'), namespace='admin_product')),
     path('api/admin/', include('upload.urls')),
     path('api/admin/', include('cart.urls_admin')),
     path('api/admin/', include('order.urls_admin')),
@@ -34,7 +34,7 @@ urlpatterns = [
     path('api/', include('authorization.urls_verify')),
     path('api/', include('address.urls')),
     path('api/', include('category.urls')),
-    path('api/', include('product.urls')),
+    path('api/', include(('product.urls', 'product'), namespace='user_product')),
     path('api/', include('cart.urls')),
     path('api/', include('order.urls')),
     path('api/', include('review.urls')),

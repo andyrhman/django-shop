@@ -8,6 +8,6 @@ urlpatterns = [
     path('product/<str:slug>', ProductAPIView.as_view()),
     path('product/rating/<str:id>', ProductAvgRatingAPIView.as_view()),
     path('variants', ProductVariantsAPIView.as_view()),
-    path('newly-added', NewlyAddedProductAPIView.as_view()),
-    path('best-selling', BestSellingProductAPIView.as_view()),
+    path('newly-added', NewlyAddedProductAPIView.as_view(), name='api-newlyadded'),
+    path('best-selling', BestSellingProductAPIView.as_view(), name='api-bestselling'),
 ]
