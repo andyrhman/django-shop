@@ -1,10 +1,14 @@
+import math
+from django.core.cache import cache
 from django.db.models.functions import Coalesce
-from rest_framework import generics, mixins
+from django.views.generic import TemplateView
+from rest_framework import generics, mixins, status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from django.db.models import Sum, Q, IntegerField, Value
 from authorization.authentication import JWTAuthentication
 from core.models import Product, ProductImages, ProductVariation
+from core.utils import TenPerPagePagination
 from product.serializers import OnlyProductSerializer, ProductAdminSerializer, ProductCreateSerializer, ProductImagesCreateSerializer, ProductImagesSerializer, ProductSerializer, ProductVariationCreateSerializer, ProductVariationSerializer
 
 # Create your views here.
@@ -13,16 +17,12 @@ class ProductListCreateAPIView(
     mixins.ListModelMixin,
     generics.GenericAPIView
 ):
-    """
-    GET  /api/products/      → list all products
-    POST /api/products/      → create new product
-    """
     authentication_classes = [JWTAuthentication]
     permission_classes = [IsAuthenticated]
     queryset = Product.objects.all()
     
     def get_serializer_class(self):
-        if self.request.method == 'POST': # ? If the request is POST go with product creaet serializer
+        if self.request.method == 'POST':
             return ProductCreateSerializer
         return ProductAdminSerializer
     
@@ -32,17 +32,18 @@ class ProductListCreateAPIView(
     def post(self, request, *args, **kwargs):
         return self.create(request, *args, **kwargs)
     
+    def perform_create(self, serializer):
+        product = serializer.save()
+        cache.delete_pattern("products:*")
+        return product
+    
 class ProductRUDAPIView(
     mixins.RetrieveModelMixin,
     mixins.UpdateModelMixin,
     mixins.DestroyModelMixin,
     generics.GenericAPIView
 ):
-    """
-    GET    /api/products/<slug>/   → retrieve single by slug
-    PUT    /api/products/<slug>/   → update
-    DELETE /api/products/<slug>/   → delete
-    """
+
     authentication_classes = [JWTAuthentication]
     permission_classes = [IsAuthenticated]
     queryset = Product.objects.all()
@@ -61,7 +62,16 @@ class ProductRUDAPIView(
     
     def delete(self, request, *args, **kwargs):
         return self.destroy(request, *args, **kwargs)
+    
+    def perform_update(self, serializer):
+        product = serializer.save()
+        cache.delete_pattern("products:*")
+        return product
 
+    def perform_destroy(self, instance):
+        instance.delete()
+        cache.delete_pattern("products:*")
+    
 class ProductVariantCDAPIView(
     mixins.CreateModelMixin,
     mixins.DestroyModelMixin,
@@ -78,12 +88,10 @@ class ProductVariantCDAPIView(
         return ProductSerializer
     
     def post(self, request, *args, **kwargs):
-        # ? defining the serializer variable and getting the request data using self.get_serializer()
         serializer = self.get_serializer(data=request.data)
         
         serializer.is_valid(raise_exception=True)
 
-        # ? saving the data to the database
         saved_variants = serializer.save()
         
         response_variants = ProductVariationSerializer(saved_variants, many=True)
@@ -116,55 +124,67 @@ class ProductImagesCDAPIView(
     
 class ProductsAPIView(generics.ListAPIView):
     serializer_class = ProductSerializer
-    queryset = Product.objects.all()
+    pagination_class = TenPerPagePagination
 
     def get_queryset(self):
-        # Start with the base queryset and include related objects if needed.
-        queryset = super().get_queryset().select_related('category').prefetch_related('products_variation')
-        
-        # --- SEARCH ---
+        qs = Product.objects.all().select_related("category").prefetch_related("products_variation")
+
         search = self.request.query_params.get("search", "").strip()
         if search:
-            queryset = queryset.filter(
+            qs = qs.filter(
                 Q(title__icontains=search) | Q(description__icontains=search)
             )
-        
-        # --- FILTER BY VARIANT ---
-        filter_by_variant = self.request.query_params.get("filterByVariant", "").strip()
-        if filter_by_variant:
-            variants = [v.strip() for v in filter_by_variant.split(",") if v.strip()]
-            queryset = queryset.filter(products_variation__name__in=variants).distinct()
-        
-        # --- FILTER BY CATEGORY ---
-        filter_by_category = self.request.query_params.get("filterByCategory", "").strip()
-        if filter_by_category:
-            categories = [c.strip() for c in filter_by_category.split(",") if c.strip()]
-            queryset = queryset.filter(category__name__in=categories)
-        
-        # --- SORTING ---
-        sort_by_price = self.request.query_params.get("sortByPrice", "").strip().lower()
-        sort_by_date = self.request.query_params.get("sortByDate", "").strip().lower()
-        
-        if sort_by_price:
 
-            if sort_by_price == "asc":
-                queryset = queryset.order_by("-price")
-            else:
-                queryset = queryset.order_by("price")
-        elif sort_by_date:
-            if sort_by_date == "newest":
-                queryset = queryset.order_by("-created_at")
-            else:
-                queryset = queryset.order_by("created_at")
+        fbv = self.request.query_params.get("filterByVariant", "").strip()
+        if fbv:
+            variants = [v.strip() for v in fbv.split(",") if v.strip()]
+            qs = qs.filter(products_variation__name__in=variants).distinct()
+
+        fbc = self.request.query_params.get("filterByCategory", "").strip()
+        if fbc:
+            cats = [c.strip() for c in fbc.split(",") if c.strip()]
+            qs = qs.filter(category__name__in=cats)
+
+        sbp = self.request.query_params.get("sortByPrice", "").strip().lower()
+        sbd = self.request.query_params.get("sortByDate", "").strip().lower()
+        if sbp:
+            qs = qs.order_by("price" if sbp == "desc" else "-price")
+        elif sbd:
+            qs = qs.order_by("-created_at" if sbd == "newest" else "created_at")
         else:
-            queryset = queryset.order_by("-updated_at")
-        
-        return queryset
+            qs = qs.order_by("-updated_at")
 
-    def get(self, request, *args, **kwargs):
-        queryset = self.get_queryset()
-        serializer = self.serializer_class(queryset, many=True)
-        return Response(serializer.data)
+        return qs
+
+    def list(self, request, *args, **kwargs):
+        cache_key = f"products:{request.get_full_path()}"
+        cached = cache.get(cache_key)
+        if cached is not None:
+            return Response(cached)
+
+        qs    = self.filter_queryset(self.get_queryset())
+        total = qs.count()
+
+        page_qs    = self.paginate_queryset(qs)
+        serializer = self.get_serializer(page_qs, many=True)
+        data       = serializer.data
+
+        per_page     = self.paginator.page_size
+        current_page = int(request.query_params.get(self.paginator.page_query_param, 1))
+        last_page    = math.ceil(total / per_page)
+
+        payload = {
+            "data": data,
+            "meta": {
+                "total": total,
+                "page": current_page,
+                "last_page": last_page,
+            }
+        }
+
+        cache.set(cache_key, payload, timeout=60 * 30)
+
+        return Response(payload)
     
 class ProductAvgRatingAPIView(generics.RetrieveAPIView):
     queryset = Product.objects.all()
@@ -216,3 +236,34 @@ class BestSellingProductAPIView(generics.ListAPIView):
         ).order_by('-total_sold')
 
         return qs[:6]
+    
+class ProductPriceFilterAPIView(generics.ListAPIView):
+    serializer_class = ProductSerializer
+
+    def get_queryset(self):
+        price_param = self.request.data.get("price")
+        try:
+            price_value = float(price_param)
+        except (TypeError, ValueError):
+            return Product.objects.none()
+
+        return Product.objects.filter(price__gte=price_value).order_by("price")
+
+    def post(self, request, *args, **kwargs):
+        if "price" not in request.data:
+            return Response(
+                {"detail": "Field 'price' is required."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        try:
+            float(request.data["price"])
+        except (TypeError, ValueError):
+            return Response(
+                {"detail": "Invalid price; must be a number."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        return self.list(request, *args, **kwargs)
+    
+class ProductsPageView(TemplateView):
+    template_name = "products.html"

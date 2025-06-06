@@ -20,6 +20,7 @@ urlpatterns = [
  
     path('admin/', admin.site.urls),
     path('', include('authorization.urls_template')),
+    path('', include('product.urls_template')),
     path('api/user/',  include(('authorization.urls', 'auth'), namespace='user_auth')),
     path('api/admin/', include(('authorization.urls', 'auth'), namespace='admin_auth')),
     path('api/admin/', include('user.urls')),
