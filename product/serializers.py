@@ -55,14 +55,12 @@ class ProductSerializer(serializers.ModelSerializer):
     
 class ProductAdminSerializer(serializers.ModelSerializer):
     category = CategorySerializer(read_only=True)
-    products_images = ProductImagesSerializer(many=True, read_only=True)
-    products_variation = ProductVariationSerializer(many=True, read_only=True)
 
     class Meta:
         model  = Product
         fields = [
             'id','title','slug','description','image','price',
-            'category','products_images','products_variation',
+            'category'
         ]
 
 class ProductCreateSerializer(serializers.ModelSerializer):

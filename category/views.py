@@ -1,3 +1,4 @@
+from django.db.models import Count
 from django.shortcuts import render
 from rest_framework import generics, mixins, status
 from rest_framework.permissions import IsAuthenticated
@@ -11,10 +12,10 @@ from core.models import Category
 # Create your views here.
 class CategoriesAPIView(APIView):
     def get(self, _):
-        categories = Category.objects.all()
-        
+        categories = Category.objects.annotate(
+            product_total=Count("product_categories")
+        )
         serializer = CategorySerializer(categories, many=True)
-        
         return Response(serializer.data)
     
 class CategoryGenericAPIView(

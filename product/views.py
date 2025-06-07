@@ -123,22 +123,19 @@ class ProductImagesCDAPIView(
         return Response(images_serializer.data)
     
 class ProductsAPIView(generics.ListAPIView):
-    serializer_class = ProductSerializer
+    serializer_class = ProductAdminSerializer
     pagination_class = TenPerPagePagination
 
     def get_queryset(self):
-        qs = Product.objects.all().select_related("category").prefetch_related("products_variation")
+        qs = Product.objects.all().select_related("category")
 
         search = self.request.query_params.get("search", "").strip()
         if search:
             qs = qs.filter(
-                Q(title__icontains=search) | Q(description__icontains=search)
+                Q(title__icontains=search) | 
+                Q(description__icontains=search) |
+                Q(category__name__icontains=search)
             )
-
-        fbv = self.request.query_params.get("filterByVariant", "").strip()
-        if fbv:
-            variants = [v.strip() for v in fbv.split(",") if v.strip()]
-            qs = qs.filter(products_variation__name__in=variants).distinct()
 
         fbc = self.request.query_params.get("filterByCategory", "").strip()
         if fbc:
