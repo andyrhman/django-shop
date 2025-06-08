@@ -1,6 +1,7 @@
 import math
 from django.core.cache import cache
 from django.db.models.functions import Coalesce
+from django.utils.html import strip_tags
 from django.views.generic import TemplateView
 from rest_framework import generics, mixins, status
 from rest_framework.permissions import IsAuthenticated
@@ -129,17 +130,19 @@ class ProductsAPIView(generics.ListAPIView):
     def get_queryset(self):
         qs = Product.objects.all().select_related("category")
 
-        search = self.request.query_params.get("search", "").strip()
+        raw_search = self.request.query_params.get("search", "")
+        search = strip_tags(raw_search).strip()
         if search:
             qs = qs.filter(
-                Q(title__icontains=search) | 
-                Q(description__icontains=search) |
-                Q(category__name__icontains=search)
+                Q(title__icontains=search)
+                | Q(description__icontains=search)
+                | Q(category__name__icontains=search)
             )
 
-        fbc = self.request.query_params.get("filterByCategory", "").strip()
-        if fbc:
-            cats = [c.strip() for c in fbc.split(",") if c.strip()]
+        raw_fbc = self.request.query_params.get("filterByCategory", "")
+        filterByCategory = strip_tags(raw_fbc).strip()
+        if filterByCategory:
+            cats = [strip_tags(c).strip() for c in filterByCategory.split(",") if c.strip()]
             qs = qs.filter(category__name__in=cats)
 
         sbp = self.request.query_params.get("sortByPrice", "").strip().lower()
@@ -155,32 +158,36 @@ class ProductsAPIView(generics.ListAPIView):
 
     def list(self, request, *args, **kwargs):
         cache_key = f"products:{request.get_full_path()}"
-        cached = cache.get(cache_key)
-        if cached is not None:
+        if (cached := cache.get(cache_key)) is not None:
             return Response(cached)
 
         qs    = self.filter_queryset(self.get_queryset())
         total = qs.count()
 
-        page_qs    = self.paginate_queryset(qs)
+        page_param = int(request.query_params.get(self.paginator.page_query_param, 1))
+        per_page   = self.paginator.page_size
+        last_page  = math.ceil(total / per_page) if total > 0 else 0
+
+        if total > 0 and (page_param < 1 or page_param > last_page):
+            return Response(
+                {"message": "Invalid page."},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        page_qs    = self.paginate_queryset(qs) or []
         serializer = self.get_serializer(page_qs, many=True)
         data       = serializer.data
-
-        per_page     = self.paginator.page_size
-        current_page = int(request.query_params.get(self.paginator.page_query_param, 1))
-        last_page    = math.ceil(total / per_page)
 
         payload = {
             "data": data,
             "meta": {
                 "total": total,
-                "page": current_page,
-                "last_page": last_page,
+                "page": page_param if total > 0 else 1,
+                "last_page": last_page
             }
         }
 
         cache.set(cache_key, payload, timeout=60 * 30)
-
         return Response(payload)
     
 class ProductAvgRatingAPIView(generics.RetrieveAPIView):

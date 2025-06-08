@@ -23,8 +23,8 @@
                         <div class="row g-4">
                             <div class="col-xl-3">
                                 <div class="input-group w-100 mx-auto d-flex">
-                                    <input type="search" class="form-control p-3" placeholder="keywords" aria-describedby="search-icon-1">
-                                    <span id="search-icon-1" class="input-group-text p-3"><i class="fa fa-search"></i></span>
+                                    <input id="search-input" type="search" class="form-control p-3" placeholder="keywords" aria-describedby="search-icon-1">
+                                    <span id="search-button" class="input-group-text p-3"><i class="fa fa-search"></i></span>
                                 </div>
                             </div>
                             <div class="col-6"></div>
@@ -179,30 +179,51 @@
 document.addEventListener('DOMContentLoaded', () => {
   const apiProductsUrl   = "{% url 'user_product:api-products' %}";
   const apiCategoriesUrl = "{% url 'user_category:api-categories' %}";
-
-  let currentCategory = "";
-  let sortByPrice     = "";
-  let sortByDate      = "";
-
+  
   const productsContainer   = document.getElementById('products-container');
   const paginationContainer = document.getElementById('pagination');
   const categoriesContainer = document.querySelector('.fruite-categorie');
   const sortSelect          = document.getElementById('sort-select');
+  const searchInput         = document.getElementById('search-input');
+  const searchButton        = document.getElementById('search-button');
+
+  let currentCategory = "";
+  let sortByPrice     = "";
+  let sortByDate      = "";
+  let currentSearch   = "";
+
+  const urlParams = new URLSearchParams(window.location.search);
+  const initialPage = parseInt(urlParams.get('page')) || 1;
+  if (urlParams.has('filterByCategory')) currentCategory = urlParams.get('filterByCategory');
+  if (urlParams.has('sortByPrice'))       sortByPrice     = urlParams.get('sortByPrice');
+  if (urlParams.has('sortByDate'))        sortByDate      = urlParams.get('sortByDate');
+  if (urlParams.has('search'))            currentSearch   = urlParams.get('search');
+
+  searchInput.value = currentSearch;
+
+  function escapeHTML(str) {
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
 
   function renderProduct(p) {
     return `
       <div class="col-md-6 col-lg-6 col-xl-4">
         <div class="rounded position-relative fruite-item">
           <div class="fruite-img">
-            <img src="${p.image}" class="img-fluid w-100 rounded-top" alt="${p.title}">
+            <img src="${escapeHTML(p.image)}" class="img-fluid w-100 rounded-top" alt="${escapeHTML(p.title)}">
           </div>
           <div class="text-white bg-secondary px-3 py-1 rounded position-absolute"
                style="top: 10px; left: 10px;">
-            ${p.category.name}
+            ${escapeHTML(p.category.name)}
           </div>
           <div class="p-4 border border-secondary border-top-0 rounded-bottom">
-            <h4>${p.title}</h4>
-            <p>${p.description}</p>
+            <h4>${escapeHTML(p.title)}</h4>
+            <p>${escapeHTML(p.description)}</p>
             <div class="d-flex justify-content-between flex-lg-wrap">
               <p class="text-dark fs-5 fw-bold mb-0">$${Number(p.price).toLocaleString()}</p>
               <a href="#" class="btn border border-secondary rounded-pill px-3 text-primary">
@@ -256,24 +277,73 @@ document.addEventListener('DOMContentLoaded', () => {
     paginationContainer.innerHTML = html;
   }
 
+  function showNoResults() {
+    productsContainer.innerHTML = `
+      <div class="col-12">
+        <div class="alert alert-warning text-center" role="alert">
+          No products found.
+        </div>
+      </div>`;
+    paginationContainer.innerHTML = '';
+  }
+
+  function showInvalidPage() {
+    productsContainer.innerHTML = `
+      <div class="col-12">
+        <div class="alert alert-danger text-center" role="alert">
+          Page not found.
+        </div>
+      </div>`;
+    paginationContainer.innerHTML = '';
+  }
+
+  const spinnerHTML = `
+    <div class="col-12">
+      <div class="d-flex justify-content-center">
+        <div class="spinner-border" role="status">
+          <span class="visually-hidden">Loading...</span>
+        </div>
+      </div>
+    </div>`;
+
   function fetchProducts(page = 1) {
     const params = new URLSearchParams({ page });
     if (currentCategory) params.set('filterByCategory', currentCategory);
     if (sortByPrice)     params.set('sortByPrice', sortByPrice);
     if (sortByDate)      params.set('sortByDate', sortByDate);
+    if (currentSearch)   params.set('search', currentSearch);
 
-    fetch(`${apiProductsUrl}?${params.toString()}`)
+    history.replaceState(null, '', `${window.location.pathname}?${params}`);
+
+    productsContainer.innerHTML = spinnerHTML;
+    paginationContainer.innerHTML = '';
+
+    fetch(`${apiProductsUrl}?${params}`)
       .then(res => {
-        if (!res.ok) throw new Error('Fetch failed');
+        if (res.status === 404) throw { type: 'invalid-page' };
+        if (!res.ok)          throw { type: 'network' };
         return res.json();
       })
       .then(data => {
+        if (data.meta.total === 0) {
+          return showNoResults();
+        }
+
         productsContainer.innerHTML = data.data.map(renderProduct).join('');
         renderPagination(data.meta);
       })
-      .catch(() => {
-        productsContainer.innerHTML = "<p class='text-danger'>Failed to load products.</p>";
-        paginationContainer.innerHTML = "";
+      .catch(err => {
+        if (err.type === 'invalid-page') {
+          showInvalidPage();
+        } else {
+          productsContainer.innerHTML = `
+            <div class="col-12">
+              <div class="alert alert-danger text-center" role="alert">
+                Failed to load products.
+              </div>
+            </div>`;
+          paginationContainer.innerHTML = '';
+        }
       });
   }
 
@@ -338,8 +408,17 @@ document.addEventListener('DOMContentLoaded', () => {
     fetchProducts(1);
   });
 
+  function doSearch() {
+    currentSearch = searchInput.value.trim();
+    fetchProducts(1);
+  }
+  searchInput.addEventListener('keydown', e => {
+    if (e.key === 'Enter') doSearch();
+  });
+  searchButton.addEventListener('click', doSearch);
+
   fetchCategories();
-  fetchProducts();
+  fetchProducts(initialPage);
 });
 </script>
 {% endblock %}
