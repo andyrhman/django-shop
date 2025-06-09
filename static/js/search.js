@@ -1,10 +1,10 @@
 document.addEventListener('DOMContentLoaded', () => {
   const searchModal   = document.getElementById('searchModal');
-  const input         = searchModal.querySelector('input[type="search"]');
-  const searchTrigger = searchModal.querySelector('.input-group-text');
+  const modalInput    = searchModal.querySelector('input[type="search"]');
+  const modalTrigger  = searchModal.querySelector('.input-group-text');
 
   function doNavSearch() {
-    const term = input.value.trim();
+    const term = modalInput.value.trim();
     const base = '/products/';
     const url  = term
       ? `${base}?search=${encodeURIComponent(term)}`
@@ -15,15 +15,40 @@ document.addEventListener('DOMContentLoaded', () => {
     window.location.href = url;
   }
 
-  input.addEventListener('keydown', e => {
+  modalInput.addEventListener('keydown', e => {
     if (e.key === 'Enter') {
       e.preventDefault();
       doNavSearch();
     }
   });
-
-  searchTrigger.addEventListener('click', e => {
+  modalTrigger.addEventListener('click', e => {
     e.preventDefault();
     doNavSearch();
   });
+
+  const heroSection = document.querySelector('.hero-header');
+  if (heroSection) {
+    const heroInput  = heroSection.querySelector('input[type="search"]');
+    const heroButton = heroSection.querySelector('button[type="submit"]');
+
+    function doHeroSearch() {
+      const term = heroInput.value.trim();
+      const base = '/products/';
+      const url  = term
+        ? `${base}?search=${encodeURIComponent(term)}`
+        : base;
+      window.location.href = url;
+    }
+
+    heroInput.addEventListener('keydown', e => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        doHeroSearch();
+      }
+    });
+    heroButton.addEventListener('click', e => {
+      e.preventDefault();
+      doHeroSearch();
+    });
+  }
 });

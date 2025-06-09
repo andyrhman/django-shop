@@ -6,7 +6,7 @@ from django.views.generic import TemplateView
 from rest_framework import generics, mixins, status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
-from django.db.models import Sum, Q, IntegerField, Value
+from django.db.models import Avg, FloatField, Sum, Q, IntegerField, Value
 from authorization.authentication import JWTAuthentication
 from core.models import Product, ProductImages, ProductVariation
 from core.utils import TenPerPagePagination
@@ -140,20 +140,52 @@ class ProductsAPIView(generics.ListAPIView):
             )
 
         raw_fbc = self.request.query_params.get("filterByCategory", "")
-        filterByCategory = strip_tags(raw_fbc).strip()
-        if filterByCategory:
-            cats = [strip_tags(c).strip() for c in filterByCategory.split(",") if c.strip()]
+        fbc = strip_tags(raw_fbc).strip()
+        if fbc:
+            cats = [strip_tags(c).strip() for c in fbc.split(",") if c.strip()]
             qs = qs.filter(category__name__in=cats)
+
+        raw_min = strip_tags(self.request.query_params.get("minPrice", "")).strip()
+        raw_max = strip_tags(self.request.query_params.get("maxPrice", "")).strip()
+
+        try:
+            min_p = float(raw_min) if raw_min else None
+        except ValueError:
+            min_p = None
+        try:
+            max_p = float(raw_max) if raw_max else None
+        except ValueError:
+            max_p = None
+
+        if min_p is not None:
+            qs = qs.filter(price__gte=min_p)
+        if max_p is not None:
+            qs = qs.filter(price__lte=max_p)
+
+        price_range_active = (min_p is not None) or (max_p is not None)
 
         sbp = self.request.query_params.get("sortByPrice", "").strip().lower()
         sbd = self.request.query_params.get("sortByDate", "").strip().lower()
+
         if sbp:
             qs = qs.order_by("price" if sbp == "desc" else "-price")
         elif sbd:
-            qs = qs.order_by("-created_at" if sbd == "newest" else "created_at")
+            qs = qs.order_by(
+                "-created_at" if sbd == "newest" else "created_at"
+            )
+        elif price_range_active:
+            qs = qs.order_by("price")
         else:
             qs = qs.order_by("-updated_at")
 
+        qs = qs.annotate(
+            average_rating=Coalesce(
+                Avg("review_products__star"),
+                Value(0.0),
+                output_field=FloatField()
+            )
+        )
+        
         return qs
 
     def list(self, request, *args, **kwargs):
@@ -222,7 +254,15 @@ class NewlyAddedProductAPIView(generics.ListAPIView):
     serializer_class = OnlyProductSerializer
 
     def get_queryset(self):
-        return Product.objects.order_by('-created_at')[:8]
+        qs = Product.objects.annotate(
+            average_rating=Coalesce(
+                Avg("review_products__star"),
+                Value(0.0),
+                output_field=FloatField()
+            )
+        ).order_by('-created_at')
+        
+        return qs[:8]
 
 class BestSellingProductAPIView(generics.ListAPIView):
     serializer_class = OnlyProductSerializer
@@ -238,7 +278,15 @@ class BestSellingProductAPIView(generics.ListAPIView):
                 output_field=IntegerField()
             )
         ).order_by('-total_sold')
-
+        
+        qs = qs.annotate(
+            average_rating=Coalesce(
+                Avg("review_products__star"),
+                Value(0.0),
+                output_field=FloatField()
+            )
+        )
+        
         return qs[:6]
     
 class ProductPriceFilterAPIView(generics.ListAPIView):

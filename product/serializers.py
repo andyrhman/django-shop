@@ -54,13 +54,14 @@ class ProductSerializer(serializers.ModelSerializer):
         return obj.review_products.count()
     
 class ProductAdminSerializer(serializers.ModelSerializer):
-    category = CategorySerializer(read_only=True)
+    category       = CategorySerializer(read_only=True)
+    average_rating = serializers.FloatField(read_only=True)
 
     class Meta:
         model  = Product
         fields = [
             'id','title','slug','description','image','price',
-            'category'
+            'category','average_rating'
         ]
 
 class ProductCreateSerializer(serializers.ModelSerializer):
@@ -196,7 +197,8 @@ class ProductImagesCreateSerializer(serializers.ModelSerializer):
     
 class OnlyProductSerializer(serializers.ModelSerializer):
     category = CategorySerializer(read_only=True)
+    average_rating = serializers.FloatField(read_only=True)
     total_sold = serializers.IntegerField(read_only=True) 
     class Meta:
         model = Product
-        fields = ['id', 'title', 'slug', 'description', 'image', 'price', 'category', 'total_sold']
+        fields = ['id', 'title', 'slug', 'description', 'image', 'price', 'category', 'total_sold', 'average_rating']

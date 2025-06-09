@@ -13,7 +13,6 @@
         </div>
         <!-- Single Page Header End -->
 
-
         <!-- Fruits Shop Start-->
         <div class="container-fluid fruite py-5">
             <div class="container py-5">
@@ -54,33 +53,27 @@
                                     <div class="col-lg-12">
                                         <div class="mb-3">
                                             <h4 class="mb-2">Price</h4>
-                                            <input type="range" class="form-range w-100" id="rangeInput" name="rangeInput" min="0" max="500" value="0" oninput="amount.value=rangeInput.value">
-                                            <output id="amount" name="amount" min-velue="0" max-value="500" for="rangeInput">0</output>
-                                        </div>
-                                    </div>
-                                    <div class="col-lg-12">
-                                        <div class="mb-3">
-                                            <h4>Additional</h4>
-                                            <div class="mb-2">
-                                                <input type="radio" class="me-2" id="Categories-1" name="Categories-1" value="Beverages">
-                                                <label for="Categories-1"> Organic</label>
-                                            </div>
-                                            <div class="mb-2">
-                                                <input type="radio" class="me-2" id="Categories-2" name="Categories-1" value="Beverages">
-                                                <label for="Categories-2"> Fresh</label>
-                                            </div>
-                                            <div class="mb-2">
-                                                <input type="radio" class="me-2" id="Categories-3" name="Categories-1" value="Beverages">
-                                                <label for="Categories-3"> Sales</label>
-                                            </div>
-                                            <div class="mb-2">
-                                                <input type="radio" class="me-2" id="Categories-4" name="Categories-1" value="Beverages">
-                                                <label for="Categories-4"> Discount</label>
-                                            </div>
-                                            <div class="mb-2">
-                                                <input type="radio" class="me-2" id="Categories-5" name="Categories-1" value="Beverages">
-                                                <label for="Categories-5"> Expired</label>
-                                            </div>
+                                              <div class="d-flex gap-2">
+                                                <input
+                                                  type="number"
+                                                  id="min-price-input"
+                                                  class="form-control"
+                                                  placeholder="Min"
+                                                  min="0"
+                                                >
+                                                <input
+                                                  type="number"
+                                                  id="max-price-input"
+                                                  class="form-control"
+                                                  placeholder="Max"
+                                                  min="0"
+                                                >
+                                                <button
+                                                  id="price-filter-button"
+                                                  class="btn btn-primary"
+                                                  type="button"
+                                                >Apply</button>
+                                              </div>
                                         </div>
                                     </div>
                                     <div class="col-lg-12">
@@ -186,20 +179,29 @@ document.addEventListener('DOMContentLoaded', () => {
   const sortSelect          = document.getElementById('sort-select');
   const searchInput         = document.getElementById('search-input');
   const searchButton        = document.getElementById('search-button');
+  const minPriceInput       = document.getElementById('min-price-input');
+  const maxPriceInput       = document.getElementById('max-price-input');
+  const priceFilterButton   = document.getElementById('price-filter-button');
 
   let currentCategory = "";
   let sortByPrice     = "";
   let sortByDate      = "";
   let currentSearch   = "";
+  let minPrice        = "";
+  let maxPrice        = "";
 
-  const urlParams = new URLSearchParams(window.location.search);
-  const initialPage = parseInt(urlParams.get('page')) || 1;
-  if (urlParams.has('filterByCategory')) currentCategory = urlParams.get('filterByCategory');
-  if (urlParams.has('sortByPrice'))       sortByPrice     = urlParams.get('sortByPrice');
-  if (urlParams.has('sortByDate'))        sortByDate      = urlParams.get('sortByDate');
-  if (urlParams.has('search'))            currentSearch   = urlParams.get('search');
+  const params = new URLSearchParams(window.location.search);
+  const initialPage = parseInt(params.get('page')) || 1;
+  if (params.has('filterByCategory')) currentCategory = params.get('filterByCategory');
+  if (params.has('sortByPrice'))       sortByPrice     = params.get('sortByPrice');
+  if (params.has('sortByDate'))        sortByDate      = params.get('sortByDate');
+  if (params.has('search'))            currentSearch   = params.get('search');
+  if (params.has('minPrice'))          minPrice        = params.get('minPrice');
+  if (params.has('maxPrice'))          maxPrice        = params.get('maxPrice');
 
-  searchInput.value = currentSearch;
+  searchInput.value       = currentSearch;
+  minPriceInput.value     = minPrice;
+  maxPriceInput.value     = maxPrice;
 
   function escapeHTML(str) {
     return String(str)
@@ -210,29 +212,66 @@ document.addEventListener('DOMContentLoaded', () => {
       .replace(/'/g, '&#39;');
   }
 
-  function renderProduct(p) {
-    return `
-      <div class="col-md-6 col-lg-6 col-xl-4">
-        <div class="rounded position-relative fruite-item">
-          <div class="fruite-img">
-            <img src="${escapeHTML(p.image)}" class="img-fluid w-100 rounded-top" alt="${escapeHTML(p.title)}">
+function renderStars(rating) {
+  let html = "";
+  const fullStars  = Math.floor(rating);
+  const hasHalf    = (rating - fullStars) >= 0.5;
+  const emptyStars = 5 - fullStars - (hasHalf ? 1 : 0);
+
+  for (let i = 0; i < fullStars; i++) {
+    html += `<i class="fas fa-star text-warning"></i>`;
+  }
+
+  if (hasHalf) {
+    html += `<i class="fas fa-star-half text-warning"></i>`;
+  }
+
+  for (let i = 0; i < emptyStars; i++) {
+    html += `<i class="far fa-star text-secondary"></i>`;
+  }
+
+  return html;
+}
+
+  const rupiahFmt = new Intl.NumberFormat('id-ID', {
+    style: 'currency',
+    currency: 'IDR',
+    minimumFractionDigits: 2
+  });
+
+function renderProduct(p) {
+  const priceStr = rupiahFmt.format(p.price / 100).replace(/\u00A0/, '');
+  return `
+    <div class="col-md-6 col-lg-6 col-xl-4">
+      <div class="rounded position-relative fruite-item">
+        <div class="fruite-img">
+          <img src="${escapeHTML(p.image)}"
+               class="img-fluid w-100 rounded-top"
+               alt="${escapeHTML(p.title)}">
+        </div>
+        <div class="text-white bg-secondary px-3 py-1 rounded position-absolute"
+             style="top: 10px; left: 10px;">
+          ${escapeHTML(p.category.name)}
+        </div>
+        <div class="p-4 border border-secondary border-top-0 rounded-bottom">
+          <h4>${escapeHTML(p.title)}</h4>
+
+          <div class="d-flex align-items-center mb-2">
+            ${renderStars(p.average_rating)}
+            <span class="ms-2 text-secondary">${p.average_rating.toFixed(1)}</span>
           </div>
-          <div class="text-white bg-secondary px-3 py-1 rounded position-absolute"
-               style="top: 10px; left: 10px;">
-            ${escapeHTML(p.category.name)}
-          </div>
-          <div class="p-4 border border-secondary border-top-0 rounded-bottom">
-            <h4>${escapeHTML(p.title)}</h4>
-            <p>${escapeHTML(p.description)}</p>
-            <div class="d-flex justify-content-between flex-lg-wrap">
-              <p class="text-dark fs-5 fw-bold mb-0">$${Number(p.price).toLocaleString()}</p>
-              <a href="#" class="btn border border-secondary rounded-pill px-3 text-primary">
-                <i class="fa fa-shopping-bag me-2 text-primary"></i> Add to cart
-              </a>
-            </div>
+
+          <div class="d-flex justify-content-between flex-lg-wrap">
+            <p class="text-dark fs-5 fw-bold mb-0">
+              ${priceStr}
+            </p>
+            <a href="#" class="btn border border-secondary rounded-pill px-3 text-primary">
+              <i class="fa fa-shopping-bag me-2 text-primary"></i> Add to cart
+            </a>
           </div>
         </div>
-      </div>`;
+      </div>
+    </div>`;
   }
 
   function buildPageList(current, last) {
@@ -297,38 +336,38 @@ document.addEventListener('DOMContentLoaded', () => {
     paginationContainer.innerHTML = '';
   }
 
-  const spinnerHTML = `
-    <div class="col-12">
-      <div class="d-flex justify-content-center">
-        <div class="spinner-border" role="status">
-          <span class="visually-hidden">Loading...</span>
-        </div>
-      </div>
-    </div>`;
-
   function fetchProducts(page = 1) {
-    const params = new URLSearchParams({ page });
-    if (currentCategory) params.set('filterByCategory', currentCategory);
-    if (sortByPrice)     params.set('sortByPrice', sortByPrice);
-    if (sortByDate)      params.set('sortByDate', sortByDate);
-    if (currentSearch)   params.set('search', currentSearch);
+    const qp = new URLSearchParams({ page });
+    if (currentCategory) qp.set('filterByCategory', currentCategory);
+    if (sortByPrice)     qp.set('sortByPrice', sortByPrice);
+    if (sortByDate)      qp.set('sortByDate', sortByDate);
+    if (currentSearch)   qp.set('search', currentSearch);
+    if (minPrice)        qp.set('minPrice', minPrice);
+    if (maxPrice)        qp.set('maxPrice', maxPrice);
 
-    history.replaceState(null, '', `${window.location.pathname}?${params}`);
+    // Update browser URL
+    history.replaceState(null, '', `${window.location.pathname}?${qp}`);
 
-    productsContainer.innerHTML = spinnerHTML;
-    paginationContainer.innerHTML = '';
+    productsContainer.innerHTML = `
+      <div class="col-12">
+        <div class="d-flex justify-content-center">
+          <div class="spinner-border" role="status">
+            <span class="visually-hidden">Loading...</span>
+          </div>
+        </div>
+      </div>`;
+    paginationContainer.innerHTML = "";
 
-    fetch(`${apiProductsUrl}?${params}`)
+    fetch(`${apiProductsUrl}?${qp}`)
       .then(res => {
-        if (res.status === 404) throw { type: 'invalid-page' };
-        if (!res.ok)          throw { type: 'network' };
+        if (res.status === 404) throw { type:'invalid-page' };
+        if (!res.ok)            throw { type:'network' };
         return res.json();
       })
       .then(data => {
         if (data.meta.total === 0) {
           return showNoResults();
         }
-
         productsContainer.innerHTML = data.data.map(renderProduct).join('');
         renderPagination(data.meta);
       })
@@ -342,10 +381,23 @@ document.addEventListener('DOMContentLoaded', () => {
                 Failed to load products.
               </div>
             </div>`;
-          paginationContainer.innerHTML = '';
+          paginationContainer.innerHTML = "";
         }
       });
   }
+
+  function applyPriceFilter() {
+    minPrice    = minPriceInput.value.trim();
+    maxPrice    = maxPriceInput.value.trim();
+    fetchProducts(1);
+  }
+
+  priceFilterButton.addEventListener('click', applyPriceFilter);
+  [minPriceInput, maxPriceInput].forEach(inp =>
+    inp.addEventListener('keydown', e => {
+      if (e.key === 'Enter') applyPriceFilter();
+    })
+  );
 
   function fetchCategories() {
     fetch(apiCategoriesUrl)

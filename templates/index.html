@@ -122,132 +122,160 @@
         <!-- Fact Start -->
 {% endblock %}
 {% block extra_scripts %}
-        <script>
-            $(function(){
-                $.ajax({
-                    url: "{% url 'user_product:api-newlyadded' %}",
-                    method: 'GET',
-                    dataType: 'json'
-                })
-                .done(function(products){
-                    const $carousel = $('.vegetable-carousel');
-                    $carousel.empty();
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  const rupiahFmt = new Intl.NumberFormat('id-ID', {
+    style: 'currency',
+    currency: 'IDR',
+    minimumFractionDigits: 2
+  });
 
-                    const rupiah = new Intl.NumberFormat('id-ID', {
-                        style: 'currency',
-                        currency: 'IDR',
-                        minimumFractionDigits: 2
-                    });
+  function renderStars(rating) {
+    let html = "";
+    const fullStars  = Math.floor(rating);
+    const hasHalf    = (rating - fullStars) >= 0.5;
+    const emptyStars = 5 - fullStars - (hasHalf ? 1 : 0);
 
-                    products.forEach(function(p) {
-                        const adjusted = p.price / 100;
-                        let priceStr  = rupiah.format(adjusted).replace(/\u00A0/, '');
-                        const html = `
-                            <div class="border border-primary rounded position-relative vesitable-item">
-                                <div class="vesitable-img">
-                                    <img src="${p.image}" class="img-fluid w-100 rounded-top" alt="${p.title}">
-                                </div>
-                                <div class="text-white bg-primary px-3 py-1 rounded position-absolute" 
-                                    style="top: 10px; right: 10px;">
-                                    ${p.category.name}
-                                </div>
-                                <div class="p-4 rounded-bottom">
-                                    <h4>${p.title}</h4>
-                                    <p>${p.description}</p>
-                                    <div class="d-flex justify-content-between flex-lg-wrap">
-                                    <p class="text-dark fs-5 fw-bold mb-0">
-                                        ${priceStr}
-                                    </p>
-                                    <a href="/product/${p.slug}" 
-                                        class="btn border border-secondary rounded-pill px-3 text-primary add-to-cart-btn"
-                                        data-product-id="${p.id}">
-                                        <i class="fa fa-shopping-bag me-2 text-primary"></i>
-                                        Add to cart
-                                    </a>
-                                    </div>
-                                </div>
-                            </div>`;
-                        $carousel.append(html);
-                    });
+    for (let i = 0; i < fullStars; i++) {
+        html += `<i class="fas fa-star text-warning"></i>`;
+    }
+    if (hasHalf) {
+        html += `<i class="fas fa-star-half text-warning"></i>`;
+    }
+    for (let i = 0; i < emptyStars; i++) {
+        html += `<i class="far fa-star text-secondary"></i>`;
+    }
+    return html;
+  }
 
-                    $carousel.owlCarousel('destroy');
-                        $carousel.owlCarousel({
-                        loop: true,
-                        margin: 30,
-                        nav: true,
-                        autoplay: true,
-                        navText: [
-                            '<i class="bi bi-arrow-right"></i>',
-                            '<i class="bi bi-arrow-left"></i>'
-                        ],
-                        responsive:{
-                            0:{ items:1 },
-                            576:{ items:2 },
-                            768:{ items:3 },
-                            992:{ items:4 }
-                        }
-                    });
+  fetch("{% url 'user_product:api-newlyadded' %}")
+    .then(res => {
+      if (!res.ok) throw new Error();
+      return res.json();
+    })
+    .then(products => {
+      const carousel = document.querySelector('.vegetable-carousel');
+      carousel.innerHTML = '';  // clear
 
-                    $carousel.on('click', '.add-to-cart-btn', function(e){
-                        e.preventDefault();
-                        const prodId = $(this).data('product-id');
-                        console.log('Add to cart:', prodId);
-                    });
-                })
-                .fail(function(){
-                    console.error('Failed to load newly added products');
-                });
+      products.forEach(p => {
+        const priceStr = rupiahFmt.format(p.price / 100).replace(/\u00A0/, '');
+        const stars    = renderStars(p.average_rating);
+        const rating   = `<span class="ms-2 text-secondary">${p.average_rating.toFixed(1)}</span>`;
 
-                const $grid = $('#bestseller-grid');
-                if ($grid.length) {
-                    $.ajax({
-                        url: '{% url "user_product:api-bestselling" %}',
-                        method: 'GET',
-                        dataType: 'json'
-                    })
-                    .done(function(products) {
-                        $grid.empty();
+        const card = `
+          <div class="border border-primary rounded position-relative vesitable-item">
+            <div class="vesitable-img">
+              <img src="${p.image}" class="img-fluid w-100 rounded-top" alt="${p.title}">
+            </div>
+            <div class="text-white bg-primary px-3 py-1 rounded position-absolute"
+                 style="top: 10px; right: 10px;">
+              ${p.category.name}
+            </div>
+            <div class="p-4 rounded-bottom">
+              <h4>${p.title}</h4>
+                <div class="d-flex align-items-center mb-2">
+                ${stars}${rating}
+                </div>
+              <div class="d-flex justify-content-between flex-lg-wrap">
+                <p class="text-dark fs-5 fw-bold mb-0">${priceStr}</p>
+                <a href="/product/${p.slug}"
+                   class="btn border border-secondary rounded-pill px-3 text-primary add-to-cart-btn"
+                   data-product-id="${p.id}">
+                  <i class="fa fa-shopping-bag me-2 text-primary"></i>
+                  Add to cart
+                </a>
+              </div>
+            </div>
+          </div>`;
+        carousel.insertAdjacentHTML('beforeend', card);
+      });
 
-                        const rupiah = new Intl.NumberFormat('id-ID', {
-                        style: 'currency',
-                        currency: 'IDR',
-                        minimumFractionDigits: 2
-                        });
 
-                        products.forEach(function(p) {
-                            const adjusted = p.price / 100;
-                            let priceStr  = rupiah.format(adjusted).replace(/\u00A0/, '');
+      $(carousel).trigger('destroy.owl.carousel');
+      $(carousel).owlCarousel({
+        loop: true,
+        margin: 30,
+        nav: true,
+        autoplay: true,
+        navText: [
+          '<i class="bi bi-arrow-right"></i>',
+          '<i class="bi bi-arrow-left"></i>'
+        ],
+        responsive: {
+          0:   { items:1 },
+          576: { items:2 },
+          768: { items:3 },
+          992: { items:4 }
+        }
+      });
 
-                            const html = `
-                                <div class="col-lg-6 col-xl-4">
-                                <div class="p-4 rounded bg-light">
-                                    <div class="row align-items-center">
-                                    <div class="col-6">
-                                        <img src="${p.image}" class="img-fluid rounded-circle w-100" alt="${p.title}">
-                                    </div>
-                                    <div class="col-6">
-                                        <a href="/products/${p.slug}/" class="h5 text-dark">${p.title}</a>
-                                        <div class="d-flex my-3">
-                                        ${'<i class="fas fa-star text-primary"></i>'.repeat(4)}
-                                        <i class="fas fa-star"></i>
-                                        </div>
-                                        <h4 class="mb-3">${priceStr}</h4>
-                                        <a href="/product/${p.slug}" class="btn border border-secondary rounded-pill px-3 text-primary add-to-cart-btn"
-                                        data-product-id="${p.id}">
-                                        <i class="fa fa-shopping-bag me-2 text-primary"></i>Add to cart
-                                        </a>
-                                    </div>
-                                    </div>
-                                </div>
-                                </div>`;
-                            $grid.append(html);
-                        });
-                    })
-                    .fail(function(){
-                        console.error('Failed to load bestseller products');
-                    });
-                }
-            });
+      carousel.addEventListener('click', e => {
+        const btn = e.target.closest('.add-to-cart-btn');
+        if (!btn) return;
+        e.preventDefault();
+        console.log('Add to cart:', btn.dataset.productId);
+      });
+    })
+    .catch(() => {
+      console.error('Failed to load newly added products');
+    });
 
-            </script>
+  const grid = document.getElementById('bestseller-grid');
+  if (grid) {
+    fetch("{% url 'user_product:api-bestselling' %}")
+      .then(res => {
+        if (!res.ok) throw new Error();
+        return res.json();
+      })
+      .then(products => {
+        grid.innerHTML = ''; 
+
+        products.forEach(p => {
+            const priceStr = rupiahFmt.format(p.price / 100).replace(/\u00A0/, '');
+            const stars    = renderStars(p.average_rating);
+            const rating   = `<span class="ms-2 text-secondary">${p.average_rating.toFixed(1)}</span>`;
+
+            const item = `
+                <div class="col-lg-6 col-xl-4">
+                    <div class="p-4 rounded bg-light">
+                        <div class="row align-items-center">
+                        <div class="col-6">
+                            <img src="${p.image}"
+                                class="img-fluid rounded-circle w-100"
+                                alt="${p.title}">
+                        </div>
+                        <div class="col-6">
+                            <a href="/products/${p.slug}/"
+                            class="h5 text-dark">${p.title}</a>
+                            <div class="d-flex my-3 align-items-center">
+                                ${stars}${rating}
+                            </div>
+                            <h4 class="mb-3">${priceStr}</h4>
+                            <a href="/product/${p.slug}"
+                            class="btn border border-secondary rounded-pill px-3 text-primary add-to-cart-btn"
+                            data-product-id="${p.id}">
+                            <i class="fa fa-shopping-bag me-2 text-primary"></i>
+                            Add to cart
+                            </a>
+                        </div>
+                        </div>
+                    </div>
+                </div>`;
+            grid.insertAdjacentHTML('beforeend', item);
+        });
+
+        grid.addEventListener('click', e => {
+          const btn = e.target.closest('.add-to-cart-btn');
+          if (!btn) return;
+          e.preventDefault();
+          console.log('Add to cart:', btn.dataset.productId);
+        });
+      })
+      .catch(() => {
+        console.error('Failed to load bestseller products');
+      });
+  }
+});
+</script>
 {% endblock %}
+
