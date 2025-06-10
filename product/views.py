@@ -319,3 +319,6 @@ class ProductPriceFilterAPIView(generics.ListAPIView):
     
 class ProductsPageView(TemplateView):
     template_name = "products.html"
+    
+class ProductDetailPageView(TemplateView):
+    template_name = 'product_detail.html'
