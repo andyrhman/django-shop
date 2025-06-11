@@ -495,18 +495,24 @@
 }
 /*** Footer End ***/
 
+#thumb-container {
+  /* exactly 6 thumbs width */
+  width: calc((60px + 8px) * 6);
+}
 #thumbnails img {
   height: 60px;
   margin-right: 8px;
   cursor: pointer;
-  opacity: 0.6;
-  border: 2px solid transparent;
   transition: opacity .2s, border-color .2s;
+  border: 2px solid transparent;
+  opacity: 0.6;
+  flex-shrink: 0;
 }
 #thumbnails img.active {
   opacity: 1;
-  border-color: #0d6efd; /* bootstrap primary */
+  border-color: #0d6efd;
 }
+
 #thumbnails::-webkit-scrollbar {
   height: 6px;
 }

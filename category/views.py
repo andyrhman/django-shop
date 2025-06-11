@@ -6,7 +6,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from authorization.authentication import JWTAuthentication
-from category.serializers import CategorySerializer
+from category.serializers import CategorySerializer, ProductCategorySerializer
 from core.models import Category
 
 # Create your views here.
@@ -44,4 +44,8 @@ class CategoryGenericAPIView(
         
     def delete(self, request, *args, **kwargs):
         return self.destroy(request, *args, **kwargs)
-    
+
+class CategoriesWithProductsAPIView(generics.RetrieveAPIView):
+    serializer_class = ProductCategorySerializer
+    lookup_field = 'id'
+    queryset = Category.objects.all()

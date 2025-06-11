@@ -2,50 +2,68 @@
 {% load static %}
 
 {% block content %}
-        <!-- Single Page Header start -->
         <div class="container-fluid py-2">
             <h1 class="text-center display-6">Shop Detail</h1>
             <ol class="breadcrumb justify-content-center mb-0">
                 <li class="breadcrumb-item"><a href="#">Home</a></li>
-                <li class="breadcrumb-item"><a href="#">Pages</a></li>
-                <li class="breadcrumb-item active">Shop Detail</li>
+                <li class="breadcrumb-item"><a href="{% url 'products' %}">Products</a></li>
+                <li id="product-breadcrumb" class="breadcrumb-item active"></li>
             </ol>
         </div>
-        <!-- Single Page Header End -->
 
-        <!-- Single Product Start -->
         <div class="container-fluid py-5 mt-5">
             <div class="container py-5">
                 <div class="row g-4 mb-5">
                     <div class="col-lg-8 col-xl-9">
                         <div class="row g-4">
-<div class="col-lg-6">
-  <!-- main image + arrows -->
-  <div class="border rounded position-relative overflow-hidden">
-    <button id="prev-image" 
-            class="btn btn-light position-absolute top-50 start-0 translate-middle-y z-2">
-      ‹
-    </button>
+                            <div class="col-lg-6">
+                                <div class="border rounded position-relative overflow-hidden">
+                                    <div id="image-spinner" 
+                                        class="spinner-border position-absolute top-50 start-50 translate-middle" 
+                                        role="status">
+                                        <span class="visually-hidden">Loading...</span>
+                                    </div>
 
-    <a href="#" id="product-image-link">
-      <img id="product-image" 
-           src="" 
-           class="img-fluid rounded w-100" 
-           alt="Product">
-    </a>
+                                    <button id="prev-image" 
+                                            class="btn btn-light position-absolute top-50 start-0 translate-middle-y z-2">
+                                    ‹
+                                    </button>
 
-    <button id="next-image" 
-            class="btn btn-light position-absolute top-50 end-0 translate-middle-y z-2">
-      ›
-    </button>
-  </div>
+                                    <a href="#" id="product-image-link">
+                                    <img id="product-image" 
+                                        src="" 
+                                        class="img-fluid rounded w-100" 
+                                        alt="Product"
+                                        style="visibility:hidden;">
+                                    </a>
 
-  <!-- thumbnail strip -->
-  <div id="thumbnails" 
-       class="d-flex overflow-auto mt-2 py-1">
-    <!-- thumbnails will be injected here -->
-  </div>
-</div>
+                                    <button id="next-image" 
+                                            class="btn btn-light position-absolute top-50 end-0 translate-middle-y z-2">
+                                    ›
+                                    </button>
+                                </div>
+
+                                <!-- thumbnail carousel -->
+                                <div class="thumb-wrapper position-relative d-flex align-items-center mt-2">
+                                    <button id="thumb-prev"
+                                            class="btn btn-light"
+                                            style="display:none; z-index:2;">
+                                        ‹
+                                    </button>
+
+                                    <div id="thumb-container" class="overflow-hidden flex-grow-1 mx-3">
+                                        <div id="thumbnails" class="d-flex">
+                                        <!-- injected here -->
+                                        </div>
+                                    </div>
+
+                                    <button id="thumb-next"
+                                            class="btn btn-light"
+                                            style="display:none; z-index:2;">
+                                        ›
+                                    </button>
+                                </div>
+                            </div>
 
                             <div class="col-lg-6">
                                 <h4 id="product-title" class="fw-bold mb-3"></h4>
@@ -131,167 +149,26 @@
                                     <input type="search" class="form-control p-3" placeholder="keywords" aria-describedby="search-icon-1">
                                     <span id="search-icon-1" class="input-group-text p-3"><i class="fa fa-search"></i></span>
                                 </div>
-                                <div class="mb-4">
-                                    <h4>Categories</h4>
-                                    <ul class="list-unstyled fruite-categorie">
-                                        <li>
-                                            <div class="d-flex justify-content-between fruite-name">
-                                                <a href="#"><i class="fas fa-apple-alt me-2"></i>Apples</a>
-                                                <span>(3)</span>
-                                            </div>
-                                        </li>
-                                        <li>
-                                            <div class="d-flex justify-content-between fruite-name">
-                                                <a href="#"><i class="fas fa-apple-alt me-2"></i>Oranges</a>
-                                                <span>(5)</span>
-                                            </div>
-                                        </li>
-                                        <li>
-                                            <div class="d-flex justify-content-between fruite-name">
-                                                <a href="#"><i class="fas fa-apple-alt me-2"></i>Strawbery</a>
-                                                <span>(2)</span>
-                                            </div>
-                                        </li>
-                                        <li>
-                                            <div class="d-flex justify-content-between fruite-name">
-                                                <a href="#"><i class="fas fa-apple-alt me-2"></i>Banana</a>
-                                                <span>(8)</span>
-                                            </div>
-                                        </li>
-                                        <li>
-                                            <div class="d-flex justify-content-between fruite-name">
-                                                <a href="#"><i class="fas fa-apple-alt me-2"></i>Pumpkin</a>
-                                                <span>(5)</span>
-                                            </div>
-                                        </li>
-                                    </ul>
-                                </div>
                             </div>
                             <div class="col-lg-12">
-                                <h4 class="mb-4">Featured products</h4>
-                                <div class="d-flex align-items-center justify-content-start">
-                                    <div class="rounded" style="width: 100px; height: 100px;">
-                                        <img src="img/featur-1.jpg" class="img-fluid rounded" alt="Image">
-                                    </div>
-                                    <div>
-                                        <h6 class="mb-2">Big Banana</h6>
-                                        <div class="d-flex mb-2">
-                                            <i class="fa fa-star text-secondary"></i>
-                                            <i class="fa fa-star text-secondary"></i>
-                                            <i class="fa fa-star text-secondary"></i>
-                                            <i class="fa fa-star text-secondary"></i>
-                                            <i class="fa fa-star"></i>
-                                        </div>
-                                        <div class="d-flex mb-2">
-                                            <h5 class="fw-bold me-2">2.99 $</h5>
-                                            <h5 class="text-danger text-decoration-line-through">4.11 $</h5>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="d-flex align-items-center justify-content-start">
-                                    <div class="rounded" style="width: 100px; height: 100px;">
-                                        <img src="img/featur-2.jpg" class="img-fluid rounded" alt="">
-                                    </div>
-                                    <div>
-                                        <h6 class="mb-2">Big Banana</h6>
-                                        <div class="d-flex mb-2">
-                                            <i class="fa fa-star text-secondary"></i>
-                                            <i class="fa fa-star text-secondary"></i>
-                                            <i class="fa fa-star text-secondary"></i>
-                                            <i class="fa fa-star text-secondary"></i>
-                                            <i class="fa fa-star"></i>
-                                        </div>
-                                        <div class="d-flex mb-2">
-                                            <h5 class="fw-bold me-2">2.99 $</h5>
-                                            <h5 class="text-danger text-decoration-line-through">4.11 $</h5>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="d-flex align-items-center justify-content-start">
-                                    <div class="rounded" style="width: 100px; height: 100px;">
-                                        <img src="img/featur-3.jpg" class="img-fluid rounded" alt="">
-                                    </div>
-                                    <div>
-                                        <h6 class="mb-2">Big Banana</h6>
-                                        <div class="d-flex mb-2">
-                                            <i class="fa fa-star text-secondary"></i>
-                                            <i class="fa fa-star text-secondary"></i>
-                                            <i class="fa fa-star text-secondary"></i>
-                                            <i class="fa fa-star text-secondary"></i>
-                                            <i class="fa fa-star"></i>
-                                        </div>
-                                        <div class="d-flex mb-2">
-                                            <h5 class="fw-bold me-2">2.99 $</h5>
-                                            <h5 class="text-danger text-decoration-line-through">4.11 $</h5>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="d-flex align-items-center justify-content-start">
-                                    <div class="rounded me-4" style="width: 100px; height: 100px;">
-                                        <img src="img/vegetable-item-4.jpg" class="img-fluid rounded" alt="">
-                                    </div>
-                                    <div>
-                                        <h6 class="mb-2">Big Banana</h6>
-                                        <div class="d-flex mb-2">
-                                            <i class="fa fa-star text-secondary"></i>
-                                            <i class="fa fa-star text-secondary"></i>
-                                            <i class="fa fa-star text-secondary"></i>
-                                            <i class="fa fa-star text-secondary"></i>
-                                            <i class="fa fa-star"></i>
-                                        </div>
-                                        <div class="d-flex mb-2">
-                                            <h5 class="fw-bold me-2">2.99 $</h5>
-                                            <h5 class="text-danger text-decoration-line-through">4.11 $</h5>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="d-flex align-items-center justify-content-start">
-                                    <div class="rounded me-4" style="width: 100px; height: 100px;">
-                                        <img src="img/vegetable-item-5.jpg" class="img-fluid rounded" alt="">
-                                    </div>
-                                    <div>
-                                        <h6 class="mb-2">Big Banana</h6>
-                                        <div class="d-flex mb-2">
-                                            <i class="fa fa-star text-secondary"></i>
-                                            <i class="fa fa-star text-secondary"></i>
-                                            <i class="fa fa-star text-secondary"></i>
-                                            <i class="fa fa-star text-secondary"></i>
-                                            <i class="fa fa-star"></i>
-                                        </div>
-                                        <div class="d-flex mb-2">
-                                            <h5 class="fw-bold me-2">2.99 $</h5>
-                                            <h5 class="text-danger text-decoration-line-through">4.11 $</h5>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="d-flex align-items-center justify-content-start">
-                                    <div class="rounded me-4" style="width: 100px; height: 100px;">
-                                        <img src="img/vegetable-item-6.jpg" class="img-fluid rounded" alt="">
-                                    </div>
-                                    <div>
-                                        <h6 class="mb-2">Big Banana</h6>
-                                        <div class="d-flex mb-2">
-                                            <i class="fa fa-star text-secondary"></i>
-                                            <i class="fa fa-star text-secondary"></i>
-                                            <i class="fa fa-star text-secondary"></i>
-                                            <i class="fa fa-star text-secondary"></i>
-                                            <i class="fa fa-star"></i>
-                                        </div>
-                                        <div class="d-flex mb-2">
-                                            <h5 class="fw-bold me-2">2.99 $</h5>
-                                            <h5 class="text-danger text-decoration-line-through">4.11 $</h5>
-                                        </div>
-                                    </div>
+                                <h4 class="mb-3">Featured products</h4>
+                                <div id="featured-products-list" class="d-flex flex-column gap-3">
                                 </div>
                                 <div class="d-flex justify-content-center my-4">
-                                    <a href="#" class="btn border border-secondary px-4 py-3 rounded-pill text-primary w-100">Vew More</a>
+                                    <button 
+                                        id="featured-view-more" 
+                                        class="btn border border-secondary px-4 py-3 rounded-pill text-primary w-100"
+                                        type="button"
+                                    >
+                                        View More
+                                    </button>
                                 </div>
                             </div>
                             <div class="col-lg-12">
                                 <div class="position-relative">
-                                    <img src="img/banner-fruits.jpg" class="img-fluid w-100 rounded" alt="">
+                                    <img src="{% static 'img/banner-fruits.jpg' %}" class="img-fluid w-100 rounded" alt="">
                                     <div class="position-absolute" style="top: 50%; right: 10px; transform: translateY(-50%);">
-                                        <h3 class="text-secondary fw-bold">Fresh <br> Fruits <br> Banner</h3>
+                                        <h3 class="text-secondary fw-bold">Menjual <br> Gaming PC <br> Terlengkap</h3>
                                     </div>
                                 </div>
                             </div>
@@ -301,259 +178,318 @@
                 <h1 class="fw-bold mb-0">Related products</h1>
                 <div class="vesitable">
                     <div class="owl-carousel vegetable-carousel justify-content-center">
-                        <div class="border border-primary rounded position-relative vesitable-item">
-                            <div class="vesitable-img">
-                                <img src="img/vegetable-item-6.jpg" class="img-fluid w-100 rounded-top" alt="">
-                            </div>
-                            <div class="text-white bg-primary px-3 py-1 rounded position-absolute" style="top: 10px; right: 10px;">Vegetable</div>
-                            <div class="p-4 pb-0 rounded-bottom">
-                                <h4>Parsely</h4>
-                                <p>Lorem ipsum dolor sit amet consectetur adipisicing elit sed do eiusmod te incididunt</p>
-                                <div class="d-flex justify-content-between flex-lg-wrap">
-                                    <p class="text-dark fs-5 fw-bold">$4.99 / kg</p>
-                                    <a href="#" class="btn border border-secondary rounded-pill px-3 py-1 mb-4 text-primary"><i class="fa fa-shopping-bag me-2 text-primary"></i> Add to cart</a>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="border border-primary rounded position-relative vesitable-item">
-                            <div class="vesitable-img">
-                                <img src="img/vegetable-item-1.jpg" class="img-fluid w-100 rounded-top" alt="">
-                            </div>
-                            <div class="text-white bg-primary px-3 py-1 rounded position-absolute" style="top: 10px; right: 10px;">Vegetable</div>
-                            <div class="p-4 pb-0 rounded-bottom">
-                                <h4>Parsely</h4>
-                                <p>Lorem ipsum dolor sit amet consectetur adipisicing elit sed do eiusmod te incididunt</p>
-                                <div class="d-flex justify-content-between flex-lg-wrap">
-                                    <p class="text-dark fs-5 fw-bold">$4.99 / kg</p>
-                                    <a href="#" class="btn border border-secondary rounded-pill px-3 py-1 mb-4 text-primary"><i class="fa fa-shopping-bag me-2 text-primary"></i> Add to cart</a>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="border border-primary rounded position-relative vesitable-item">
-                            <div class="vesitable-img">
-                                <img src="img/vegetable-item-3.png" class="img-fluid w-100 rounded-top bg-light" alt="">
-                            </div>
-                            <div class="text-white bg-primary px-3 py-1 rounded position-absolute" style="top: 10px; right: 10px;">Vegetable</div>
-                            <div class="p-4 pb-0 rounded-bottom">
-                                <h4>Banana</h4>
-                                <p>Lorem ipsum dolor sit amet consectetur adipisicing elit sed do eiusmod te incididunt</p>
-                                <div class="d-flex justify-content-between flex-lg-wrap">
-                                    <p class="text-dark fs-5 fw-bold">$7.99 / kg</p>
-                                    <a href="#" class="btn border border-secondary rounded-pill px-3 py-1 mb-4 text-primary"><i class="fa fa-shopping-bag me-2 text-primary"></i> Add to cart</a>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="border border-primary rounded position-relative vesitable-item">
-                            <div class="vesitable-img">
-                                <img src="img/vegetable-item-4.jpg" class="img-fluid w-100 rounded-top" alt="">
-                            </div>
-                            <div class="text-white bg-primary px-3 py-1 rounded position-absolute" style="top: 10px; right: 10px;">Vegetable</div>
-                            <div class="p-4 pb-0 rounded-bottom">
-                                <h4>Bell Papper</h4>
-                                <p>Lorem ipsum dolor sit amet consectetur adipisicing elit sed do eiusmod te incididunt</p>
-                                <div class="d-flex justify-content-between flex-lg-wrap">
-                                    <p class="text-dark fs-5 fw-bold">$7.99 / kg</p>
-                                    <a href="#" class="btn border border-secondary rounded-pill px-3 py-1 mb-4 text-primary"><i class="fa fa-shopping-bag me-2 text-primary"></i> Add to cart</a>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="border border-primary rounded position-relative vesitable-item">
-                            <div class="vesitable-img">
-                                <img src="img/vegetable-item-5.jpg" class="img-fluid w-100 rounded-top" alt="">
-                            </div>
-                            <div class="text-white bg-primary px-3 py-1 rounded position-absolute" style="top: 10px; right: 10px;">Vegetable</div>
-                            <div class="p-4 pb-0 rounded-bottom">
-                                <h4>Potatoes</h4>
-                                <p>Lorem ipsum dolor sit amet consectetur adipisicing elit sed do eiusmod te incididunt</p>
-                                <div class="d-flex justify-content-between flex-lg-wrap">
-                                    <p class="text-dark fs-5 fw-bold">$7.99 / kg</p>
-                                    <a href="#" class="btn border border-secondary rounded-pill px-3 py-1 mb-4 text-primary"><i class="fa fa-shopping-bag me-2 text-primary"></i> Add to cart</a>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="border border-primary rounded position-relative vesitable-item">
-                            <div class="vesitable-img">
-                                <img src="img/vegetable-item-6.jpg" class="img-fluid w-100 rounded-top" alt="">
-                            </div>
-                            <div class="text-white bg-primary px-3 py-1 rounded position-absolute" style="top: 10px; right: 10px;">Vegetable</div>
-                            <div class="p-4 pb-0 rounded-bottom">
-                                <h4>Parsely</h4>
-                                <p>Lorem ipsum dolor sit amet consectetur adipisicing elit sed do eiusmod te incididunt</p>
-                                <div class="d-flex justify-content-between flex-lg-wrap">
-                                    <p class="text-dark fs-5 fw-bold">$7.99 / kg</p>
-                                    <a href="#" class="btn border border-secondary rounded-pill px-3 py-1 mb-4 text-primary"><i class="fa fa-shopping-bag me-2 text-primary"></i> Add to cart</a>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="border border-primary rounded position-relative vesitable-item">
-                            <div class="vesitable-img">
-                                <img src="img/vegetable-item-5.jpg" class="img-fluid w-100 rounded-top" alt="">
-                            </div>
-                            <div class="text-white bg-primary px-3 py-1 rounded position-absolute" style="top: 10px; right: 10px;">Vegetable</div>
-                            <div class="p-4 pb-0 rounded-bottom">
-                                <h4>Potatoes</h4>
-                                <p>Lorem ipsum dolor sit amet consectetur adipisicing elit sed do eiusmod te incididunt</p>
-                                <div class="d-flex justify-content-between flex-lg-wrap">
-                                    <p class="text-dark fs-5 fw-bold">$7.99 / kg</p>
-                                    <a href="#" class="btn border border-secondary rounded-pill px-3 py-1 mb-4 text-primary"><i class="fa fa-shopping-bag me-2 text-primary"></i> Add to cart</a>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="border border-primary rounded position-relative vesitable-item">
-                            <div class="vesitable-img">
-                                <img src="img/vegetable-item-6.jpg" class="img-fluid w-100 rounded-top" alt="">
-                            </div>
-                            <div class="text-white bg-primary px-3 py-1 rounded position-absolute" style="top: 10px; right: 10px;">Vegetable</div>
-                            <div class="p-4 pb-0 rounded-bottom">
-                                <h4>Parsely</h4>
-                                <p>Lorem ipsum dolor sit amet consectetur adipisicing elit sed do eiusmod te incididunt</p>
-                                <div class="d-flex justify-content-between flex-lg-wrap">
-                                    <p class="text-dark fs-5 fw-bold">$7.99 / kg</p>
-                                    <a href="#" class="btn border border-secondary rounded-pill px-3 py-1 mb-4 text-primary"><i class="fa fa-shopping-bag me-2 text-primary"></i> Add to cart</a>
-                                </div>
-                            </div>
-                        </div>
+
                     </div>
                 </div>
             </div>
         </div>
-        <!-- Single Product End -->
 {% endblock %}
 
 {% block extra_scripts %}
 <script>
 document.addEventListener('DOMContentLoaded', () => {
-  // helper to render star icons
-  function renderStars(rating) {
-    const full = Math.floor(rating),
-          half = (rating - full) >= 0.5,
-          empty = 5 - full - (half ? 1 : 0);
-    let html = '';
-    for (let i = 0; i < full; i++)   html += '<i class="fas fa-star text-warning"></i>';
-    if (half)                        html += '<i class="fas fa-star-half-alt text-warning"></i>';
-    for (let i = 0; i < empty; i++)  html += '<i class="far fa-star text-secondary"></i>';
-    return html;
-  }
+    function renderStars(rating) {
+        const full = Math.floor(rating),
+            half = (rating - full) >= 0.5,
+            empty = 5 - full - (half ? 1 : 0);
+        let html = '';
+        for (let i = 0; i < full; i++)   html += '<i class="fas fa-star text-warning"></i>';
+        if (half)                        html += '<i class="fas fa-star-half-alt text-warning"></i>';
+        for (let i = 0; i < empty; i++)  html += '<i class="far fa-star text-secondary"></i>';
+        return html;
+    }
 
-  // find our elements
-  const imageEl        = document.getElementById('product-image');
-  const imageLinkEl    = document.getElementById('product-image-link');
-  const titleEl        = document.getElementById('product-title');
-  const categoryEl     = document.getElementById('product-category');
-  const priceEl        = document.getElementById('product-price');
-  const ratingEl       = document.getElementById('product-rating');
-  const descriptionEl  = document.getElementById('product-description');
-  const variantsEl     = document.getElementById('variant-options');
-  const reviewsEl      = document.getElementById('reviews-container');
+    const imageLinkEl    = document.getElementById('product-image-link');
+    const titleEl        = document.getElementById('product-title');
+    const breadcrumbEl   = document.getElementById('product-breadcrumb');
+    const detailEl       = document.getElementById('product-detail');
+    const categoryEl     = document.getElementById('product-category');
+    const priceEl        = document.getElementById('product-price');
+    const ratingEl       = document.getElementById('product-rating');
+    const descriptionEl  = document.getElementById('product-description');
+    const variantsEl     = document.getElementById('variant-options');
+    const reviewsEl      = document.getElementById('reviews-container');
 
-  // extract slug from URL
-  const slug = window.location.pathname.split('/').filter(Boolean).pop();
-let galleryImages = [];
-let currentIndex   = 0;
+    const slug = window.location.pathname.split('/').filter(Boolean).pop();
 
-const thumbnailsEl = document.getElementById('thumbnails');
-const prevBtn      = document.getElementById('prev-image');
-const nextBtn      = document.getElementById('next-image');
-  // show spinner
-  titleEl.textContent = '';
-  imageEl.src = '';
-  reviewsEl.innerHTML = `<div class="text-center py-5"><div class="spinner-border"></div></div>`;
+    const imageEl      = document.getElementById('product-image');
+    const spinnerEl    = document.getElementById('image-spinner');
+    const thumbnailsEl = document.getElementById('thumbnails');
+    const prevBtn      = document.getElementById('prev-image');
+    const nextBtn      = document.getElementById('next-image');
 
-  // fetch detail
-  fetch(`/api/product/${encodeURIComponent(slug)}`)
+    const thumbPrevBtn  = document.getElementById('thumb-prev');
+    const thumbNextBtn  = document.getElementById('thumb-next');
+    const thumbContainer= document.getElementById('thumb-container');
+    titleEl.textContent = '';
+
+    reviewsEl.innerHTML = `<div class="text-center py-5"><div class="spinner-border"></div></div>`;
+
+    let galleryImages = [];
+    let currentIndex  = 0;
+    let autoTimer;
+
+    function setMainImage(idx) {
+        currentIndex = idx;
+
+        spinnerEl.style.display    = 'block';
+        imageEl.style.visibility   = 'hidden';
+
+        imageEl.onload = () => {
+            spinnerEl.style.display  = 'none';
+            imageEl.style.visibility = 'visible';
+        };
+
+        imageEl.src  = galleryImages[idx];
+        imageLinkEl.href = galleryImages[idx];
+
+        Array.from(thumbnailsEl.children).forEach((thumb, i) => {
+            if (i === idx) {
+            thumb.classList.add('active');
+            thumb.style.opacity     = '1';
+            thumb.style.borderColor = '#0d6efd';
+            } else {
+            thumb.classList.remove('active');
+            thumb.style.opacity     = '0.6';
+            thumb.style.borderColor = 'transparent';
+            }
+        });
+    }
+
+    function startAutoRotate() {
+        if (autoTimer) clearInterval(autoTimer);
+        autoTimer = setInterval(() => {
+            setMainImage((currentIndex + 1) % galleryImages.length);
+        }, 10000);
+    }
+
+    fetch(`/api/product/${encodeURIComponent(slug)}`)
     .then(r => {
       if (!r.ok) throw new Error(r.status === 404 ? 'not-found' : 'network');
       return r.json();
     })
     .then(p => {
-      // image + link
-      imageEl.src = p.image;
-      imageEl.alt = p.title;
-      imageLinkEl.href = `/product/${p.slug}/`;
+        imageEl.src = p.image;
+        imageEl.alt = p.title;
+        imageLinkEl.href = `/product/${p.slug}/`;
 
-      // text fields
-      titleEl.textContent       = p.title;
-      categoryEl.textContent    = 'Category: ' + p.category.name;
-      priceEl.textContent       = (p.price/100).toLocaleString('en-US',{style:'currency',currency:'USD'});
-      ratingEl.innerHTML        = renderStars(p.averageRating || p.average_rating);
-      descriptionEl.textContent = p.description;
+        titleEl.textContent       = p.title;
+        breadcrumbEl.textContent  = p.title;
+        categoryEl.textContent    = 'Category: ' + p.category.name;
+        priceEl.textContent       = (p.price/100).toLocaleString('en-US',{style:'currency',currency:'USD'});
+        ratingEl.innerHTML        = renderStars(p.averageRating || p.average_rating);
+        descriptionEl.textContent = p.description;
 
-      // variants as radio buttons
-      if (Array.isArray(p.products_variation) && p.products_variation.length) {
-        const groupName = 'variant';
-        const radios = p.products_variation.map((v, i) => `
-          <div class="form-check">
-            <input class="form-check-input" type="radio" name="${groupName}" id="var-${i}" value="${v.name}" ${i===0?'checked':''}>
-            <label class="form-check-label" for="var-${i}">${v.name}</label>
-          </div>
-        `).join('');
-        variantsEl.insertAdjacentHTML('beforeend', radios);
-      }
+        if (Array.isArray(p.products_variation) && p.products_variation.length) {
+            const groupName = 'variant';
+            const radios = p.products_variation.map((v, i) => `
+            <div class="form-check">
+                <input class="form-check-input" type="radio" name="${groupName}" id="var-${i}" value="${v.name}" ${i===0?'checked':''}>
+                <label class="form-check-label" for="var-${i}">${v.name}</label>
+            </div>
+            `).join('');
+            variantsEl.insertAdjacentHTML('beforeend', radios);
+        }
 
-      // reviews
-      reviewsEl.innerHTML = '';
-      if (p.review_products.length === 0) {
-        reviewsEl.innerHTML = '<p class="text-muted">No reviews yet.</p>';
-      } else {
-        p.review_products.forEach(r => {
-          const date = new Date(r.created_at).toLocaleDateString();
-          const stars = renderStars(r.star);
-          const html = `
-            <div class="d-flex">
-              <img src="{% static 'img/avatar.jpg' %}"
-                   class="img-fluid rounded-circle me-3"
-                   style="width:100px;height:100px"
-                   alt="${r.user}">
-              <div>
-                <p class="mb-1 text-muted">${date}</p>
-                <div class="d-flex justify-content-between">
-                  <h5>${r.user}</h5>
-                  <div class="d-flex mb-2">${stars}</div>
-                </div>
-                <p>${r.comment}</p>
-              </div>
-            </div>`;
-          reviewsEl.insertAdjacentHTML('beforeend', html);
+        reviewsEl.innerHTML = '';
+        if (p.review_products.length === 0) {
+            reviewsEl.innerHTML = '<p class="text-muted">No reviews yet.</p>';
+        } else {
+            p.review_products.forEach(r => {
+            const date = new Date(r.created_at).toLocaleDateString();
+            const stars = renderStars(r.star);
+            const html = `
+                <div class="d-flex">
+                    <img src="{% static 'img/avatar.jpg' %}"
+                        class="img-fluid rounded-circle me-3"
+                        style="width:100px;height:100px"
+                        alt="${r.user}">
+                    <div>
+                        <p class="mb-1 text-muted">${date}</p>
+                        <div class="d-flex justify-content-between">
+                            <h5>${r.user}</h5>
+                            <div class="d-flex mb-2">${stars}</div>
+                        </div>
+                        <p>${r.comment}</p>
+                    </div>
+                </div>`;
+            reviewsEl.insertAdjacentHTML('beforeend', html);
+            });
+        }
+
+      const extras = (p.products_images||[])
+        .map(pi=>pi.name)
+        .filter((src,i,a)=>src!==p.image && a.indexOf(src)===i);
+      galleryImages = [p.image, ...extras];
+
+      thumbnailsEl.innerHTML = '';
+      galleryImages.forEach((src,idx) => {
+        const t = document.createElement('img');
+        t.src = src;
+        Object.assign(t.style, {
+          height:'60px', marginRight:'8px', cursor:'pointer',
+          transition:'opacity .2s, border-color .2s',
+          border:'2px solid transparent', opacity:idx===0?'1':'0.6',
+          flexShrink:'0'
         });
+        if(idx===0) t.classList.add('active');
+        t.addEventListener('click', () => { setMainImage(idx); startAutoRotate(); });
+        thumbnailsEl.appendChild(t);
+      });
+
+      if(galleryImages.length>6) {
+        thumbPrevBtn.style.display='block';
+        thumbNextBtn.style.display='block';
       }
 
-  galleryImages = [
-    p.image, 
-    ... (p.products_images || []).map(pi => pi.name)
-  ];
+      const scrollAmount = thumbContainer.clientWidth;
+      thumbPrevBtn.onclick = ()=>thumbContainer.scrollBy({left:-scrollAmount,behavior:'smooth'});
+      thumbNextBtn.onclick = ()=>thumbContainer.scrollBy({left: scrollAmount,behavior:'smooth'});
 
-  currentIndex               = 0;
-  imageEl.src                = galleryImages[0];
-  imageEl.alt                = p.title;
-  imageLinkEl.href           = `/product/${p.slug}/`;
+      prevBtn.onclick = ()=>{ setMainImage((currentIndex-1+galleryImages.length)%galleryImages.length); startAutoRotate(); };
+      nextBtn.onclick = ()=>{ setMainImage((currentIndex+1)%galleryImages.length); startAutoRotate(); };
 
-  // render the thumbnails
-  thumbnailsEl.innerHTML = '';
-  galleryImages.forEach((src, idx) => {
-    const thumb = document.createElement('img');
-    thumb.src   = src;
-    thumb.dataset.idx = idx;
-    if (idx === 0) thumb.classList.add('active');
-    thumb.addEventListener('click', () => {
-      setMainImage(idx);
-    });
-    thumbnailsEl.appendChild(thumb);
-  });
+      setMainImage(0);
+      startAutoRotate();
 
-  // wire up prev/next
-  prevBtn.addEventListener('click', () => {
-    setMainImage((currentIndex - 1 + galleryImages.length) % galleryImages.length);
-  });
-  nextBtn.addEventListener('click', () => {
-    setMainImage((currentIndex + 1) % galleryImages.length);
-  });
+        fetch(`/api/categories/product-related/${p.category.id}`)
+        .then(r => r.ok ? r.json() : Promise.reject())
+        .then(cat => {
+            const $carousel = $('.vegetable-carousel');
+            $carousel.empty(); 
+
+            cat.product_categories.forEach(prod => {
+                const cardHtml = `
+                    <div class="border border-primary rounded position-relative vesitable-item">
+                        <div class="vesitable-img">
+                            <img src="${prod.image}" class="img-fluid w-100 rounded-top" alt="${prod.title}">
+                        </div>
+                        <div class="text-white bg-primary px-3 py-1 rounded position-absolute"
+                            style="top: 10px; right: 10px;">
+                            ${cat.name}
+                        </div>
+                        <div class="p-4 pb-0 rounded-bottom">
+                            <h4>${prod.title}</h4>
+                            <p>${prod.description.slice(0,60)}…</p>
+                            <div class="d-flex justify-content-between flex-lg-wrap">
+                            <p class="text-dark fs-5 fw-bold">
+                                ${(prod.price/100).toLocaleString('en-US',{style:'currency',currency:'USD'})}
+                            </p>
+                            <a href="/product/${prod.slug}/"
+                                class="btn border border-secondary rounded-pill px-3 py-1 mb-4 text-primary">
+                                <i class="fa fa-shopping-bag me-2"></i>View
+                            </a>
+                            </div>
+                        </div>
+                    </div>`;
+                    $carousel.append(cardHtml);
+                });
+
+                if ($carousel.hasClass('owl-loaded')) {
+                    $carousel.trigger('destroy.owl.carousel');
+                    $carousel.removeClass('owl-loaded');
+                }
+                $carousel.owlCarousel({
+                loop:    false,
+                margin:  30,
+                nav:     true,
+                navText: ['‹','›'],
+                responsive: {
+                    0:   { items: 1 },
+                    576: { items: 2 },
+                    768: { items: 3 },
+                    992: { items: 4 }
+                }
+            });
+        })
+        .catch(() => {
+            $('.vegetable-carousel').html('<p class="text-muted">No related products.</p>');
+        });
+
     })
     .catch(err => {
-      const msg = err.message === 'not-found'
+        const msg = err.message === 'not-found'
         ? 'Product not found.'
         : 'Unable to load product.';
-      document.getElementById('product-detail').innerHTML = `
+        document.getElementById('product-detail').innerHTML = `
         <div class="alert alert-danger">${msg}</div>`;
+    });
+
+    const container = document.getElementById('featured-products-list');
+    const viewMore  = document.getElementById('featured-view-more');
+    let shownCount  = 0;
+    const perBatch  = 3;
+
+    fetch("{% url 'user_product:api-bestselling' %}")
+    .then(r => {
+        if (!r.ok) throw new Error();
+        return r.json();
+        })
+    .then(products => {
+        if (!products.length) {
+            container.innerHTML = `
+            <div class="alert alert-info" role="alert">
+                No featured products to show.
+            </div>`;
+            viewMore.style.display = 'none';
+            return;
+        }
+
+        function renderBatch() {
+            const next = products.slice(shownCount, shownCount + perBatch);
+            next.forEach(p => {
+            const priceStr = (p.price / 100).toLocaleString('id-ID', {
+                style: 'currency', currency: 'IDR', minimumFractionDigits: 2
+            });
+            const itemHTML = `
+                <div class="d-flex align-items-start gap-3">
+                    <a href="/products/${p.slug}/" style="flex-shrink:0; width:80px; height:80px;">
+                        <img src="${p.image}" class="img-fluid w-100 rounded" alt="${p.title}">
+                    </a>
+                    <div>
+                        <h6 class="mb-1">
+                        <a href="/products/${p.slug}/" class="text-decoration-none text-dark">
+                            ${p.title}
+                        </a>
+                        </h6>
+                        <div class="d-flex align-items-center">
+                            ${renderStars(p.average_rating)}
+                            <span class="ms-2 text-secondary">${p.average_rating.toFixed(1)}</span>
+                        </div>
+                        <div class="d-flex align-items-baseline">
+                            <h5 class="fw-bold me-2 mb-0">${priceStr}</h5>
+                            ${p.original_price
+                                ? `<h5 class="text-danger text-decoration-line-through mb-0">
+                                    ${(p.original_price/100).toLocaleString('id-ID',{
+                                        style:'currency',currency:'IDR',minimumFractionDigits:2
+                                    })}
+                                </h5>`
+                                : ''}
+                        </div>
+                    </div>
+                </div>`;
+                container.insertAdjacentHTML('beforeend', itemHTML);
+            });
+            shownCount += next.length;
+            if (shownCount >= products.length) {
+                viewMore.style.display = 'none';
+            }
+        }
+
+        renderBatch();
+
+        viewMore.addEventListener('click', () => {
+            renderBatch();
+        });
+
+ 
+    })
+    .catch(() => {
+        container.innerHTML = `
+            <div class="alert alert-danger" role="alert">
+            Failed to load featured products. Please try again later.
+            </div>`;
+        viewMore.style.display = 'none';
     });
 });
 </script>
