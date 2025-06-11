@@ -373,7 +373,6 @@ function renderProduct(p) {
     if (minPrice)        qp.set('minPrice', minPrice);
     if (maxPrice)        qp.set('maxPrice', maxPrice);
 
-    // Update browser URL
     history.replaceState(null, '', `${window.location.pathname}?${qp}`);
 
     productsContainer.innerHTML = `

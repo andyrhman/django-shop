@@ -43,7 +43,6 @@
                                     </button>
                                 </div>
 
-                                <!-- thumbnail carousel -->
                                 <div class="thumb-wrapper position-relative d-flex align-items-center mt-2">
                                     <button id="thumb-prev"
                                             class="btn btn-light"
@@ -53,7 +52,6 @@
 
                                     <div id="thumb-container" class="overflow-hidden flex-grow-1 mx-3">
                                         <div id="thumbnails" class="d-flex">
-                                        <!-- injected here -->
                                         </div>
                                     </div>
 
@@ -491,6 +489,41 @@ document.addEventListener('DOMContentLoaded', () => {
             </div>`;
         viewMore.style.display = 'none';
     });
+
+
+    // PRODUCT-DETAIL PAGE SEARCH
+    ;(function() {
+        // find the detail‐page search group
+        const detailGroup = document.querySelector('.input-group.w-100.mx-auto.d-flex.mb-4');
+        if (!detailGroup) return;
+
+        const input   = detailGroup.querySelector('input[type="search"]');
+        const trigger = detailGroup.querySelector('.input-group-text');
+
+        function doDetailSearch() {
+            const term = input.value.trim();
+            const base = '/products/';
+            // same logic as search.js
+            const url  = term
+            ? `${base}?search=${encodeURIComponent(term)}`
+            : base;
+            window.location.href = url;
+        }
+
+        // Enter key ⇒ search
+        input.addEventListener('keydown', e => {
+            if (e.key === 'Enter') {
+            e.preventDefault();
+            doDetailSearch();
+            }
+        });
+
+        // click the magnifier ⇒ search
+        trigger.addEventListener('click', e => {
+            e.preventDefault();
+            doDetailSearch();
+        });
+    })();
 });
 </script>
 {% endblock %}
