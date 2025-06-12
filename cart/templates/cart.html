@@ -1,0 +1,261 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block content %}
+        <div class="container-fluid page-header py-5">
+            <h1 class="text-center text-white display-6">Cart</h1>
+            <ol class="breadcrumb justify-content-center mb-0">
+                <li class="breadcrumb-item"><a href="{% url 'home' %}">Home</a></li>
+                <li class="breadcrumb-item active text-white">Cart</li>
+            </ol>
+        </div>
+
+        <div class="container-fluid py-5">
+            <div class="container py-5">
+                <div class="table-responsive">
+                    <table class="table">
+                        <thead>
+                        <tr>
+                            <th scope="col">Products</th>
+                            <th scope="col">Name</th>
+                            <th scope="col">Price</th>
+                            <th scope="col">Quantity</th>
+                            <th scope="col">Total</th>
+                            <th scope="col">Handle</th>
+                        </tr>
+                        </thead>
+                        <tbody id="cart-body">
+                        </tbody>
+                    </table>
+                </div>
+                <div class="row g-4 justify-content-end">
+                    <div class="col-8"></div>
+                    <div class="col-sm-8 col-md-7 col-lg-6 col-xl-4">
+                        <div class="bg-light rounded">
+                        <div class="p-4">
+                            <h1 class="display-6 mb-4">Cart <span class="fw-normal">Total</span></h1>
+                            <div class="d-flex justify-content-between mb-4">
+                            <h5 class="mb-0 me-4">Total items:</h5>
+                            <p id="cart-total-items" class="mb-0">0</p>
+                            </div>
+                        </div>
+                        <div class="py-4 mb-4 border-top border-bottom d-flex justify-content-between">
+                            <h5 class="mb-0 ps-4 me-4">Total</h5>
+                            <p id="cart-total-price" class="mb-0">Rp0.00</p>
+                        </div>
+                        <button class="btn border-secondary rounded-pill px-4 py-3 text-primary text-uppercase mb-4 ms-4"
+                                type="button"
+                                id="checkout-btn"
+                                disabled>
+                            Proceed Checkout
+                        </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+{% endblock %}
+
+
+{% block extra_scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  const bodyEl      = document.getElementById('cart-body');
+  const totalItemsE = document.getElementById('cart-total-items');
+  const totalPriceE = document.getElementById('cart-total-price');
+  const checkoutBtn = document.getElementById('checkout-btn');
+
+  const currencyFmt = new Intl.NumberFormat('id-ID', {
+        style: 'currency',
+        currency: 'IDR',
+        minimumFractionDigits: 2
+    });
+
+  function getCsrf() {
+    return document.cookie.split('csrftoken=')[1]?.split(';')[0] || '';
+  }
+
+  async function loadCart() {
+    bodyEl.innerHTML = `
+      <tr>
+        <td colspan="6">
+          <div class="d-flex justify-content-center py-5">
+            <div class="spinner-border" role="status">
+              <span class="visually-hidden">Loading...</span>
+            </div>
+          </div>
+        </td>
+      </tr>`;
+
+    try {
+      const [cartRes, totalRes] = await Promise.all([
+        fetch('/api/cart', { credentials: 'include' }),
+        fetch('/api/cart-total', { credentials: 'include' })
+      ]);
+
+      if (cartRes.status === 401) {
+        return window.location.href = '/login/';
+      }
+      if (!cartRes.ok || !totalRes.ok) {
+        throw new Error('Failed to load cart data');
+      }
+
+      const cart    = await cartRes.json();
+      const totals  = await totalRes.json();
+
+      bodyEl.innerHTML = '';
+
+      cart.forEach(item => {
+        const { id, variant, product, quantity, price } = item;
+        const lineTotal = price * quantity;
+
+        const tr = document.createElement('tr');
+        tr.dataset.cartId = id;
+
+        tr.innerHTML = `
+          <th scope="row">
+            <div class="d-flex align-items-center">
+              <img src="${product.image}"
+                   class="img-fluid me-5 rounded-circle"
+                   style="width:80px;height:80px"
+                   alt="${product.title}">
+            </div>
+          </th>
+          <td><p class="mb-0 mt-4">${product.title} (${variant.name})</p></td>
+          <td><p class="mb-0 mt-4">${currencyFmt.format(price)}</p></td>
+          <td>
+            <div class="input-group quantity mt-4" style="width:100px">
+              <div class="input-group-btn">
+                <button class="btn btn-sm btn-minus rounded-circle bg-light border">
+                  <i class="fa fa-minus"></i>
+                </button>
+              </div>
+              <input type="text"
+                     class="form-control form-control-sm text-center border-0 qty-input"
+                     value="${quantity}">
+              <div class="input-group-btn">
+                <button class="btn btn-sm btn-plus rounded-circle bg-light border">
+                  <i class="fa fa-plus"></i>
+                </button>
+              </div>
+            </div>
+          </td>
+          <td><p class="mb-0 mt-4 line-total">${currencyFmt.format(lineTotal)}</p></td>
+          <td>
+            <button class="btn btn-md rounded-circle bg-light border mt-4 remove-btn" data-id="${id}">
+              <i class="fa fa-times text-danger"></i>
+            </button>
+          </td>
+        `;
+        bodyEl.appendChild(tr);
+      });
+
+      totalItemsE.textContent = totals.totalItems;
+      totalPriceE.textContent = currencyFmt.format(totals.totalPrice);
+      checkoutBtn.disabled   = totals.totalItems === 0;
+
+      document.querySelectorAll('.remove-btn').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          const itemId = btn.getAttribute('data-id');
+          try {
+            const res = await fetch(`/api/cart/${itemId}`, {
+              method: 'DELETE',
+              credentials: 'include',
+              headers: { 'X-CSRFToken': getCsrf() }
+            });
+            if (res.status === 401) {
+              return window.location.href = '/login/';
+            }
+            if (!res.ok) throw new Error('Delete failed');
+            loadCart();
+          } catch (err) {
+            console.error(err);
+            alert('Could not remove item.');
+          }
+        });
+      });
+
+      bodyEl.querySelectorAll('tr').forEach(tr => {
+        const itemId   = tr.dataset.cartId;
+        const minusBtn = tr.querySelector('.btn-minus');
+        const plusBtn  = tr.querySelector('.btn-plus');
+        const inputEl  = tr.querySelector('.qty-input');
+
+        async function updateQty(newQty) {
+          newQty = Math.max(1, parseInt(newQty, 10) || 1);
+          const res = await fetch(`/api/cart/${itemId}`, {
+            method: 'PUT',
+            credentials: 'include',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-CSRFToken': getCsrf()
+            },
+            body: JSON.stringify({ quantity: newQty })
+          });
+          if (res.status === 401) return window.location.href = '/login/';
+          if (res.ok) {
+            loadCart();
+          }
+        }
+
+        minusBtn.addEventListener('click', e => {
+          e.preventDefault();
+          updateQty(parseInt(inputEl.value, 10) - 1);
+        });
+        plusBtn.addEventListener('click', e => {
+          e.preventDefault();
+          updateQty(parseInt(inputEl.value, 10) + 1);
+        });
+      });
+
+    } catch (err) {
+      console.error(err);
+      bodyEl.innerHTML = `
+        <tr><td colspan="6" class="text-center py-4">
+          Unable to load your cart.
+        </td></tr>`;
+    }
+  }
+
+checkoutBtn.addEventListener('click', async () => {
+  // collect all cart IDs
+  const cartIds = Array.from(bodyEl.querySelectorAll('tr[data-cart-id]'))
+    .map(tr => tr.dataset.cartId)
+    .map(id => ({ cart_id: id }));
+
+  if (cartIds.length === 0) return;
+
+  try {
+    const res = await fetch('/api/checkout/orders', {
+      method: 'POST',
+      credentials: 'include',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': getCsrf()
+      },
+      body: JSON.stringify({ carts: cartIds })
+    });
+
+    if (res.status === 401) {
+      // not logged in: go to login
+      return window.location.href = '/login/';
+    }
+    if (!res.ok) {
+      const err = await res.json();
+      console.error('Checkout error', err);
+      return alert(err.message || 'Unable to create order');
+    }
+
+    const data = await res.json();
+    // redirect to Stripe Checkout
+    window.location.href = data.url;
+
+  } catch (err) {
+    console.error('Checkout exception', err);
+    alert('Unexpected error during checkout');
+  }
+});
+  loadCart();
+});
+</script>
+{% endblock %}

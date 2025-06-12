@@ -417,8 +417,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const qtyInput = document.getElementById('qty-input');
 
         function getQty() {
-        const n = Number(qtyInput.value);
-        return Number.isInteger(n) && n > 0 ? n : 1;
+            const n = Number(qtyInput.value);
+            return Number.isInteger(n) && n > 0 ? n : 1;
         }
 
         function showToast(message, type = 'info') {

@@ -1,4 +1,5 @@
 from functools import partial
+from django.views.generic import TemplateView
 from rest_framework import exceptions, generics, mixins, status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -146,3 +147,6 @@ class TotalCartAPIView(APIView):
             "totalItems": total_items,
             "totalPrice": total_price
         })
+        
+class CartPageView(TemplateView):
+    template_name = "cart.html"
