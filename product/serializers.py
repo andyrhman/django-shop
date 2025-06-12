@@ -1,3 +1,4 @@
+import re
 from django.db.migrations import serializer
 from django.utils.text import slugify
 from rest_framework import serializers
@@ -95,7 +96,21 @@ class ProductCreateSerializer(serializers.ModelSerializer):
         variants = validated_data.pop('variants', [])
         
         title = validated_data.get('title')
-        slug = slugify(title)
+        base_slug = slugify(title)
+        slug      = base_slug
+
+        existing = Product.objects.filter(slug__startswith=base_slug) \
+                                  .values_list('slug', flat=True)
+
+        if slug in existing:
+            nums = []
+            pattern = re.compile(rf'^{re.escape(base_slug)}-(\d+)$')
+            for s in existing:
+                m = pattern.match(s)
+                if m:
+                    nums.append(int(m.group(1)))
+            next_num = max(nums or [1]) + 1
+            slug = f"{base_slug}-{next_num}"
         
         product = Product.objects.create(
             slug=slug,

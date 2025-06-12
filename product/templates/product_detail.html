@@ -73,18 +73,22 @@
                                 </div>
 
                                 <div class="input-group quantity mb-5" style="width: 100px;">
-                                    <button class="btn btn-sm btn-minus rounded-circle bg-light border">
-                                        <i class="fa fa-minus"></i>
-                                    </button>
-                                    <input id="product-quantity" type="text" class="form-control form-control-sm text-center border-0" value="1">
-                                    <button class="btn btn-sm btn-plus rounded-circle bg-light border">
-                                        <i class="fa fa-plus"></i>
-                                    </button>
+                                    <div class="input-group-btn">
+                                        <button class="btn btn-sm btn-minus rounded-circle bg-light border" >
+                                            <i class="fa fa-minus"></i>
+                                        </button>
+                                    </div>
+                                    <input id="qty-input" type="number"  class="form-control form-control-sm text-center border-0" value="1" min="1" step="1">
+                                    <div class="input-group-btn">
+                                        <button class="btn btn-sm btn-plus rounded-circle bg-light border">
+                                            <i class="fa fa-plus"></i>
+                                        </button>
+                                    </div>
                                 </div>
 
-                                <a href="#" id="add-to-cart" class="btn border border-secondary rounded-pill px-4 py-2 mb-4 text-primary">
-                                    <i class="fa fa-shopping-bag me-2 text-primary"></i> Add to cart
-                                </a>
+                                <button type="button" id="add-to-cart" class="btn border border-secondary rounded-pill px-4 py-2 mb-4 text-primary">
+                                    <i class="fa fa-shopping-bag me-2"></i> Add to cart
+                                </button>
                             </div>
                             <div class="col-lg-12">
                                 <nav>
@@ -243,13 +247,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
         Array.from(thumbnailsEl.children).forEach((thumb, i) => {
             if (i === idx) {
-            thumb.classList.add('active');
-            thumb.style.opacity     = '1';
-            thumb.style.borderColor = '#0d6efd';
+                thumb.classList.add('active');
+                thumb.style.opacity     = '1';
+                thumb.style.borderColor = '#0d6efd';
             } else {
-            thumb.classList.remove('active');
-            thumb.style.opacity     = '0.6';
-            thumb.style.borderColor = 'transparent';
+                thumb.classList.remove('active');
+                thumb.style.opacity     = '0.6';
+                thumb.style.borderColor = 'transparent';
             }
         });
     }
@@ -260,6 +264,12 @@ document.addEventListener('DOMContentLoaded', () => {
             setMainImage((currentIndex + 1) % galleryImages.length);
         }, 10000);
     }
+
+    const rupiahFmt = new Intl.NumberFormat('id-ID', {
+        style: 'currency',
+        currency: 'IDR',
+        minimumFractionDigits: 2
+    });
 
     fetch(`/api/product/${encodeURIComponent(slug)}`)
     .then(r => {
@@ -274,7 +284,7 @@ document.addEventListener('DOMContentLoaded', () => {
         titleEl.textContent       = p.title;
         breadcrumbEl.textContent  = p.title;
         categoryEl.textContent    = 'Category: ' + p.category.name;
-        priceEl.textContent       = (p.price/100).toLocaleString('en-US',{style:'currency',currency:'USD'});
+        priceEl.textContent       = rupiahFmt.format(p.price / 100).replace(/\u00A0/, '');
         ratingEl.innerHTML        = renderStars(p.averageRating || p.average_rating);
         descriptionEl.textContent = p.description;
 
@@ -282,7 +292,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const groupName = 'variant';
             const radios = p.products_variation.map((v, i) => `
             <div class="form-check">
-                <input class="form-check-input" type="radio" name="${groupName}" id="var-${i}" value="${v.name}" ${i===0?'checked':''}>
+                <input class="form-check-input" type="radio" name="${groupName}" id="var-${i}" value="${v.id}" ${i===0?'checked':''}>
                 <label class="form-check-label" for="var-${i}">${v.name}</label>
             </div>
             `).join('');
@@ -404,6 +414,73 @@ document.addEventListener('DOMContentLoaded', () => {
             $('.vegetable-carousel').html('<p class="text-muted">No related products.</p>');
         });
 
+        const qtyInput = document.getElementById('qty-input');
+
+        function getQty() {
+        const n = Number(qtyInput.value);
+        return Number.isInteger(n) && n > 0 ? n : 1;
+        }
+
+        function showToast(message, type = 'info') {
+            Toastify({
+                text: message,
+                duration: 3000,
+                gravity: 'top',
+                position: 'center',
+                backgroundColor:
+                type === 'success' ? 'linear-gradient(to right, #00b09b, #96c93d)' :
+                type === 'error'   ? 'linear-gradient(to right, #e52d27, #b31217)' :
+                'linear-gradient(to right, #333, #555)'
+            }).showToast();
+        }
+
+        document.getElementById('add-to-cart').addEventListener('click', e => {
+            e.preventDefault();
+
+            const variantEl = document.querySelector('input[name="variant"]:checked');
+            if (!variantEl) {
+                return showToast('Please select a variant.', 'error');
+            }
+
+            const variantId = variantEl.value;
+            const qty       = getQty();
+            const productId = p.id;
+
+            fetch('/api/cart', {
+                method: 'POST',
+                credentials: 'include',
+                headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': document.cookie.split('user_session=')[1]?.split(';')[0] || ''
+                },
+                body: JSON.stringify({ quantity: qty, product: productId, variant: variantId })
+            })
+            .then(res => {
+                if (res.status === 401) {
+                window.location.href = '/login/';
+                throw new Error('Redirecting to login');
+                }
+                if (!res.ok) {
+                return res.json().then(err => Promise.reject(err));
+                }
+                return res.json();
+            })
+            .then(() => {
+                showToast('Added to cart!', 'success');
+            })
+            .catch(err => {
+                if (err.message === 'Redirecting to login') return;
+                console.error('Cart error', err);
+
+                const msg =
+                err.variant?.[0] ||
+                err.message ||
+                'Unable to add to cart';
+
+                showToast(msg, 'error');
+            });
+        });
+
     })
     .catch(err => {
         const msg = err.message === 'not-found'
@@ -490,10 +567,7 @@ document.addEventListener('DOMContentLoaded', () => {
         viewMore.style.display = 'none';
     });
 
-
-    // PRODUCT-DETAIL PAGE SEARCH
     ;(function() {
-        // find the detail‐page search group
         const detailGroup = document.querySelector('.input-group.w-100.mx-auto.d-flex.mb-4');
         if (!detailGroup) return;
 
@@ -503,14 +577,12 @@ document.addEventListener('DOMContentLoaded', () => {
         function doDetailSearch() {
             const term = input.value.trim();
             const base = '/products/';
-            // same logic as search.js
             const url  = term
             ? `${base}?search=${encodeURIComponent(term)}`
             : base;
             window.location.href = url;
         }
 
-        // Enter key ⇒ search
         input.addEventListener('keydown', e => {
             if (e.key === 'Enter') {
             e.preventDefault();
@@ -518,7 +590,6 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
 
-        // click the magnifier ⇒ search
         trigger.addEventListener('click', e => {
             e.preventDefault();
             doDetailSearch();
