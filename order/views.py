@@ -86,9 +86,8 @@ class CreateOrderAPIView(APIView):
                 variant=cart.variant,
                 status=OrderItemStatus.SEDANG_DIKEMAS,
             )
-            # attach the cart to the order too
             cart.order = order
-            cart.completed = False  # or leave as-is until confirm
+            cart.completed = False
             cart.save()
 
             line_items.append({
@@ -105,9 +104,11 @@ class CreateOrderAPIView(APIView):
             })
 
         stripe.api_key = config('STRIPE_SECRET_KEY')
+        ORIGIN = config('ORIGIN')
+
         session = stripe.checkout.Session.create(
-            success_url='http://localhost:5000/success?source={CHECKOUT_SESSION_ID}',
-            cancel_url='http://localhost:5000/error',
+            success_url=f"{ORIGIN}/success?source={{CHECKOUT_SESSION_ID}}",
+            cancel_url =f"{ORIGIN}/error",
             payment_method_types=['card'],
             line_items=line_items,
             mode='payment'

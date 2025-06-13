@@ -200,6 +200,14 @@ document.addEventListener('DOMContentLoaded', () => {
         for (let i = 0; i < empty; i++)  html += '<i class="far fa-star text-secondary"></i>';
         return html;
     }
+    const productDetailUrlTpl      = "{% url 'user_product:api-product-detail' slug='__SLUG__' %}";
+    const relatedByCategoryUrlTpl  = "{% url 'user_category:api-productrelated' id='__CATID__' %}";
+    const cartUrl                  = "{% url 'user_cart:api-cart' %}";
+    const bestSellingUrl           = "{% url 'user_product:api-bestselling' %}";
+
+    function buildUrl(template, placeholder, value) {
+      return template.replace(placeholder, encodeURIComponent(value));
+    }
 
     const imageLinkEl    = document.getElementById('product-image-link');
     const titleEl        = document.getElementById('product-title');
@@ -271,7 +279,7 @@ document.addEventListener('DOMContentLoaded', () => {
         minimumFractionDigits: 2
     });
 
-    fetch(`/api/product/${encodeURIComponent(slug)}`)
+    fetch(buildUrl(productDetailUrlTpl, '__SLUG__', slug))
     .then(r => {
       if (!r.ok) throw new Error(r.status === 404 ? 'not-found' : 'network');
       return r.json();
@@ -360,7 +368,7 @@ document.addEventListener('DOMContentLoaded', () => {
       setMainImage(0);
       startAutoRotate();
 
-        fetch(`/api/categories/product-related/${p.category.id}`)
+        fetch(buildUrl(relatedByCategoryUrlTpl, '__CATID__', p.category.id))
         .then(r => r.ok ? r.json() : Promise.reject())
         .then(cat => {
             const $carousel = $('.vegetable-carousel');
@@ -446,7 +454,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const qty       = getQty();
             const productId = p.id;
 
-            fetch('/api/cart', {
+            fetch(cartUrl, {
                 method: 'POST',
                 credentials: 'include',
                 headers: {
@@ -495,7 +503,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let shownCount  = 0;
     const perBatch  = 3;
 
-    fetch("{% url 'user_product:api-bestselling' %}")
+    fetch(bestSellingUrl)
     .then(r => {
         if (!r.ok) throw new Error();
         return r.json();

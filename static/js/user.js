@@ -1,21 +1,27 @@
+// user.js
+
 function getCookie(name) {
-    const match = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'));
-    return match ? match[2] : null;
+  const match = document.cookie.match(
+    new RegExp('(^| )' + name + '=([^;]+)')
+  );
+  return match ? match[2] : null;
 }
 
-$(function renderUserMenu() {
-    const $container = $('#user-menu');
+document.addEventListener('DOMContentLoaded', () => {
+  const userMenuContainer = document.getElementById('user-menu');
+  const cartCountBadge    = document.getElementById('cart-count');
 
-    $.ajax({
-        url: '/api/user/',
-        method: 'GET',
-        dataType: 'json',
-        xhrFields: { withCredentials: true },   // send JWT cookie
-        headers: { 'Content-Type': 'application/json' }
+  // Render user menu (as before)…
+  fetch('/api/user/', {
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' }
+  })
+    .then(res => {
+      if (!res.ok) throw new Error('Not logged in');
+      return res.json();
     })
-        .done(function (user) {
-            // logged in
-            $container.html(`
+    .then(user => {
+      userMenuContainer.innerHTML = `
         <div class="nav-item dropdown">
           <a href="#" class="nav-link dropdown-toggle d-flex align-items-center" data-bs-toggle="dropdown">
             <i class="fas fa-user fa-2x me-2"></i>
@@ -26,29 +32,43 @@ $(function renderUserMenu() {
             <li><a class="dropdown-item" href="#" id="logout-btn">Logout</a></li>
           </ul>
         </div>
-      `);
-
-            // bind logout click
-            $container.find('#logout-btn').on('click', function (e) {
-                e.preventDefault();
-                $.ajax({
-                    url: '/api/user/logout',
-                    method: 'POST',
-                    xhrFields: { withCredentials: true },
-                    headers: {
-                        'X-CSRFToken': getCookie('csrftoken'),
-                        'Content-Type': 'application/json'
-                    }
-                }).always(function () {
-                    location.reload();
-                });
-            });
-        })
-        .fail(function () {
-            // not logged in
-            $container.html(`
+      `;
+      document.getElementById('logout-btn').addEventListener('click', e => {
+        e.preventDefault();
+        fetch('/api/user/logout', {
+          method: 'POST',
+          credentials: 'include',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCookie('csrftoken')
+          }
+        }).finally(() => window.location.reload());
+      });
+    })
+    .catch(() => {
+      userMenuContainer.innerHTML = `
         <a href="/login" class="btn btn-outline-primary me-2">Login</a>
         <a href="/register" class="btn btn-primary">Register</a>
-      `);
-        });
+      `;
+    });
+
+  // Fetch totalItems and update badge
+  if (cartCountBadge) {
+    fetch('/api/cart-total', {
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' }
+    })
+      .then(res => {
+        if (!res.ok) throw new Error('Failed to load cart total');
+        return res.json();
+      })
+      .then(data => {
+        cartCountBadge.textContent = data.totalItems;
+      })
+      .catch(err => {
+        console.error('Cart-total error:', err);
+        // Optionally hide or style the badge on error:
+        // cartCountBadge.style.display = 'none';
+      });
+  }
 });

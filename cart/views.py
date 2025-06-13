@@ -88,7 +88,7 @@ class CartCRUDAPIView(
     def get(self, request):
         user = request.user
         
-        get_user = Cart.objects.filter(user=user)
+        get_user = Cart.objects.filter(user=user, completed=False)
         
         serializer = self.get_serializer(get_user, many=True)
         

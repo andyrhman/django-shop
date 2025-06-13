@@ -5,7 +5,7 @@ from product.views import BestSellingProductAPIView, NewlyAddedProductAPIView, P
 
 urlpatterns = [
     path('products', ProductsAPIView.as_view(), name='api-products'),
-    path('product/<str:slug>/', ProductAPIView.as_view()),
+    path('product/<str:slug>/', ProductAPIView.as_view(), name='api-product-detail'),
     path('product/rating/<str:id>', ProductAvgRatingAPIView.as_view()),
     path('variants', ProductVariantsAPIView.as_view()),
     path('newly-added', NewlyAddedProductAPIView.as_view(), name='api-newlyadded'),
