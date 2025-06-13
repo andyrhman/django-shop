@@ -1,3 +1,4 @@
+from django.views.generic import TemplateView
 from rest_framework import mixins, status
 from rest_framework.exceptions import NotFound, ValidationError
 import stripe
@@ -195,3 +196,6 @@ class ConfirmOrderAPIVIew(APIView):
         
         order_completed.send(sender=self.__class__, order=order)
         return Response(self.serializer_class(order).data, status=status.HTTP_202_ACCEPTED)
+    
+class UserOrderPageView(TemplateView):
+    template_name = 'user_order.html'
