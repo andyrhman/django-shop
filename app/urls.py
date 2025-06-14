@@ -20,6 +20,7 @@ urlpatterns = [
     path('success/', TemplateView.as_view(template_name='success.html'), name='success'),
     path('error/', TemplateView.as_view(template_name='error.html'), name='error'),
  
+    path('profile/', TemplateView.as_view(template_name='profile.html'), name='profile'),
     path('admin/', admin.site.urls),
     path('', include('authorization.urls_template')),
     path('', include('product.urls_template')),

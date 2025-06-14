@@ -41,10 +41,10 @@
             <div class="nav-item dropdown">
               <a href="#" class="nav-link dropdown-toggle d-flex align-items-center" data-bs-toggle="dropdown">
                 <i class="fas fa-user fa-2x me-2"></i>
-                <span>${user.fullName}</span>
+                <span>${user.username}</span>
               </a>
               <ul class="dropdown-menu dropdown-menu-end">
-                <li><a class="dropdown-item" href="/profile/">Profile</a></li>
+                <li><a class="dropdown-item" href="{% url 'profile' %}">Profile</a></li>
                 <li><a class="dropdown-item" href="{% url 'my-order' %}">My Order</a></li>
                 <li><a class="dropdown-item" href="#" id="logout-btn">Logout</a></li>
               </ul>
@@ -64,8 +64,8 @@
         })
         .catch(() => {
           userMenuContainer.innerHTML = `
-            <a href="/login" class="btn btn-outline-primary me-2">Login</a>
-            <a href="/register" class="btn btn-primary">Register</a>
+            <a href="{% url 'login' %}" class="btn btn-outline-primary me-2">Login</a>
+            <a href="{% url 'register' %}" class="btn btn-primary">Register</a>
           `;
         });
 

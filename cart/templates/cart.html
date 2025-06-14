@@ -12,6 +12,7 @@
 
         <div class="container-fluid py-5">
             <div class="container py-5">
+                <div id="checkout-alert"></div>
                 <div class="table-responsive">
                     <table class="table">
                         <thead>
@@ -103,7 +104,7 @@ document.addEventListener('DOMContentLoaded', () => {
         ]);
 
         if (cartRes.status === 401) {
-          return window.location.href = '/login/';
+          return window.location.href = "{% url 'login' %}";
         }
         if (!cartRes.ok || !totalRes.ok) {
           throw new Error('Failed to load cart data');
@@ -116,8 +117,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
         cart.forEach(item => {
           const { id, variant, product, quantity, price } = item;
-          const lineTotal = price * quantity;
+          const unitPrice = price / 100;
+          const lineTotal = unitPrice * quantity;
 
+          const formattedPrice = currencyFmt.format(unitPrice);
+          const formattedLine = currencyFmt.format(lineTotal);
           const tr = document.createElement('tr');
           tr.dataset.cartId = id;
 
@@ -131,7 +135,7 @@ document.addEventListener('DOMContentLoaded', () => {
               </div>
             </th>
             <td><p class="mb-0 mt-4">${product.title} (${variant.name})</p></td>
-            <td><p class="mb-0 mt-4">${currencyFmt.format(price)}</p></td>
+            <td><p class="mb-0 mt-4">${formattedPrice}</p></td>
             <td>
               <div class="input-group quantity mt-4" style="width:100px">
                 <div class="input-group-btn">
@@ -149,7 +153,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 </div>
               </div>
             </td>
-            <td><p class="mb-0 mt-4 line-total">${currencyFmt.format(lineTotal)}</p></td>
+            <td><p class="mb-0 mt-4 line-total">${formattedLine}</p></td>
             <td>
               <button class="btn btn-md rounded-circle bg-light border mt-4 remove-btn" data-id="${id}">
                 <i class="fa fa-times text-danger"></i>
@@ -232,7 +236,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const cartIds = Array.from(bodyEl.querySelectorAll('tr[data-cart-id]'))
       .map(tr => tr.dataset.cartId)
       .map(id => ({ cart_id: id }));
-
     if (cartIds.length === 0) return;
 
     try {
@@ -247,15 +250,39 @@ document.addEventListener('DOMContentLoaded', () => {
       });
 
       if (res.status === 401) {
-        return window.location.href = '/login/';
-      }
-      if (!res.ok) {
-        const err = await res.json();
-        console.error('Checkout error', err);
-        return alert(err.message || 'Unable to create order');
+        return window.location.href = "{% url 'login' %}";
       }
 
       const data = await res.json();
+
+      if (!data.url && data.message) {
+        document.getElementById('checkout-alert').innerHTML = `
+          <div class="alert alert-warning">
+            ${data.message} (redirecting you in 
+            <span id="checkout-countdown">8</span> seconds)
+          </div>`;
+
+        let seconds = 8;
+        const countdownEl = document.getElementById('checkout-countdown');
+        const timer = setInterval(() => {
+          seconds--;
+          if (seconds <= 0) {
+            clearInterval(timer);
+            window.location.href = "{% url 'profile' %}" + '?tab=address';
+          } else {
+            countdownEl.textContent = seconds;
+          }
+        }, 1000);
+
+        return;
+      }
+
+      if (!res.ok) {
+        console.error('Checkout error', data);
+        alert(data.message || 'Unable to create order');
+        return;
+      }
+
       window.location.href = data.url;
 
     } catch (err) {
@@ -263,6 +290,7 @@ document.addEventListener('DOMContentLoaded', () => {
       alert('Unexpected error during checkout');
     }
   });
+
   loadCart();
 });
 </script>

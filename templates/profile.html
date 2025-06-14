@@ -1,0 +1,329 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block content %}
+<div class="container-fluid py-2">
+  <h1 class="text-center display-6">My Profile</h1>
+  <ol class="breadcrumb justify-content-center mb-0">
+    <li class="breadcrumb-item"><a href="{% url 'home' %}">Home</a></li>
+    <li class="breadcrumb-item active">Profile</li>
+  </ol>
+</div>
+
+<div class="container-fluid contact py-5">
+  <div class="container py-5">
+    <div class="p-5 bg-light rounded">
+      <nav>
+        <div class="nav nav-tabs mb-4">
+          <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tab-profile">Profile</button>
+          <button class="nav-link"       data-bs-toggle="tab" data-bs-target="#tab-address">Address</button>
+        </div>
+      </nav>
+
+      <div class="tab-content">
+        <!-- PROFILE TAB -->
+        <div class="tab-pane fade show active" id="tab-profile">
+          <div class="row g-4">
+            <!-- Update Info Form -->
+            <div class="col-lg-6">
+              <h5>Update Info</h5>
+                <div id="info-alert"></div>
+              <form id="info-form">
+                <div class="mb-3">
+                  <label for="fullName" class="form-label">Full Name</label>
+                  <input type="text" id="fullName" class="form-control" value="{{ request.user.fullName }}" required>
+                </div>
+                <div class="mb-3">
+                  <label for="email" class="form-label">Email</label>
+                  <input type="email" id="email" class="form-control" value="{{ request.user.email }}" required>
+                </div>
+                <div class="mb-3">
+                  <label for="username" class="form-label">Username</label>
+                  <input type="text" id="username" class="form-control" value="{{ request.user.username }}" required>
+                </div>
+                <button type="submit" class="btn btn-primary">Save Info {{ request.user.username }}</button>
+              </form>
+            </div>
+
+            <!-- Change Password Form -->
+            <div class="col-lg-6">
+              <h5>Change Password</h5>
+                <div id="password-alert"></div>
+              <form id="password-form">
+                <div class="mb-3">
+                  <label for="password" class="form-label">New Password</label>
+                  <input type="password" id="password" class="form-control" required>
+                </div>
+                <div class="mb-3">
+                  <label for="confirmPassword" class="form-label">Confirm Password</label>
+                  <input type="password" id="confirmPassword" class="form-control" required>
+                </div>
+                <button type="submit" class="btn btn-warning">Change Password</button>
+              </form>
+            </div>
+          </div>
+        </div>
+
+        <!-- ADDRESS TAB -->
+        <div class="tab-pane fade" id="tab-address">
+          <div id="address-alert"></div>
+
+          <!-- Shown if no address exists -->
+          <div id="no-address-msg" class="text-center py-4">
+            <p>You haven’t added an address yet.</p>
+            <button id="create-address-btn" class="btn btn-primary">Create Address</button>
+          </div>
+
+          <!-- Form container; hidden until needed -->
+          <form id="address-form" class="d-none">
+            <div class="mb-3">
+              <label for="street" class="form-label">Street</label>
+              <input type="text" id="street" class="form-control" required>
+            </div>
+            <div class="mb-3">
+              <label for="city" class="form-label">City</label>
+              <input type="text" id="city" class="form-control" required>
+            </div>
+            <div class="mb-3">
+              <label for="province" class="form-label">Province</label>
+              <input type="text" id="province" class="form-control" required>
+            </div>
+            <div class="mb-3">
+              <label for="zip" class="form-label">ZIP</label>
+              <input type="text" id="zip" class="form-control" required>
+            </div>
+            <div class="mb-3">
+              <label for="country" class="form-label">Country</label>
+              <input type="text" id="country" class="form-control" required>
+            </div>
+            <div class="mb-3">
+              <label for="phone" class="form-label">Phone</label>
+              <input type="text" id="phone" class="form-control" required>
+            </div>
+            <button type="submit" class="btn btn-secondary">Save Address</button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    function getCookie(name) {
+      const match = document.cookie.match(
+        new RegExp('(^| )' + name + '=([^;]+)')
+      );
+      return match ? match[2] : null;
+    }
+document.addEventListener('DOMContentLoaded', () => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('tab') === 'address') {
+        const addressTabBtn = document.querySelector('[data-bs-target="#tab-address"]');
+        addressTabBtn.click();
+    }
+
+    fetch("{% url 'user_auth:api-user' %}", {
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' }
+    })
+    .then(res => {
+        if (res.status === 401) {
+            return window.location.href = "{% url 'login' %}";
+        }
+        if (!res.ok) throw new Error('Failed to load user');
+        return res.json();
+    })
+    .then(user => {
+        document.getElementById('fullName').value = user.fullName   || '';
+        document.getElementById('email'   ).value = user.email      || '';
+        document.getElementById('username').value = user.username   || '';
+    })
+    .catch(err => {
+        console.error(err);
+        document.getElementById('info-alert').innerHTML = `
+        <div class="alert alert-warning">
+            Could not load your profile data.
+        </div>`;
+    });
+
+    document.getElementById('info-form').addEventListener('submit', async e => {
+        e.preventDefault();
+        const alertBox = document.getElementById('info-alert');
+        alertBox.innerHTML = '';
+
+        const data = {
+            fullName: document.getElementById('fullName').value,
+            email:    document.getElementById('email'   ).value,
+            username: document.getElementById('username').value,
+        };
+
+        try {
+            const res = await fetch("{% url 'user_auth:api-update-info' %}", {
+                method: 'PUT',
+                credentials: 'include',
+                headers: {
+                    'Content-Type':'application/json',
+                    'X-CSRFToken': getCookie('csrftoken')
+                },
+                body: JSON.stringify(data)
+            });
+            const payload = await res.json();
+            if (!res.ok) throw payload;
+
+            alertBox.innerHTML = `
+                <div class="alert alert-success">
+                Profile updated successfully.
+                </div>`;
+        } catch(err) {
+            console.error(err);
+            const msg = err.message || err.detail || err.message || 'Failed to update profile.';
+            alertBox.innerHTML = `
+                <div class="alert alert-danger">
+                ${msg}
+                </div>`;
+        }
+    });
+
+    document.getElementById('password-form').addEventListener('submit', async e => {
+        e.preventDefault();
+        const alertBox = document.getElementById('password-alert');
+        alertBox.innerHTML = '';
+
+        const pwd = document.getElementById('password').value;
+        const cpw = document.getElementById('confirmPassword').value;
+        if (pwd !== cpw) {
+            alertBox.innerHTML = `
+                <div class="alert alert-danger">
+                Passwords do not match.
+                </div>`;
+            return;
+        }
+
+        try {
+            const res = await fetch("{% url 'user_auth:api-update-password' %}", {
+                method: 'PUT',
+                credentials: 'include',
+                headers: {
+                    'Content-Type':'application/json',
+                    'X-CSRFToken': getCookie('csrftoken')
+                },
+                body: JSON.stringify({ password: pwd, confirm_password: cpw })
+            });
+            if (res.status === 204) {
+                alertBox.innerHTML = `
+                <div class="alert alert-success">
+                    Password changed successfully.
+                </div>`;
+                document.getElementById('password').value = '';
+                document.getElementById('confirmPassword').value = '';
+            } else {
+                const payload = await res.json();
+                throw payload;
+            }
+        } catch(err) {
+            console.error(err);
+            const msg = err.message || err.detail || 'Failed to change password.';
+            alertBox.innerHTML = `
+                <div class="alert alert-danger">
+                ${msg}
+                </div>`;
+        }
+    });
+        
+    const alertEl     = document.getElementById('address-alert');
+    const noAddressEl = document.getElementById('no-address-msg');
+    const createBtn   = document.getElementById('create-address-btn');
+    const formEl      = document.getElementById('address-form');
+    const fields      = ['street','city','province','zip','country','phone'];
+    const API         = "{% url 'user_address:address-crud' %}";
+
+    let hasAddress = false;
+
+    function showToast(msg, type='success') {
+        Toastify({
+        text: msg,
+        duration: 3000,
+        close: true,
+        gravity: 'top',
+        position: 'right',
+        backgroundColor:
+            type === 'success'
+            ? 'linear-gradient(to right, #00b09b, #96c93d)'
+            : 'linear-gradient(to right, #e52d27, #b31217)'
+        }).showToast();
+    }
+
+    fetch(API, { credentials:'include' })
+        .then(res => {
+            if (res.status === 404) {
+                noAddressEl.classList.remove('d-none');
+                return null;
+            }
+            if (!res.ok) throw new Error('Failed to load address');
+            hasAddress = true;
+            return res.json();
+        })
+        .then(addr => {
+            if (!addr) return;
+            fields.forEach(f => formEl.querySelector(`#${f}`).value = addr[f] || '');
+            noAddressEl.classList.add('d-none');
+            formEl.classList.remove('d-none');
+        })
+        .catch(err => {
+            console.error(err);
+            alertEl.innerHTML = `<div class="alert alert-danger">Could not load address.</div>`;
+        });
+
+    createBtn.addEventListener('click', e => {
+        e.preventDefault();
+        noAddressEl.classList.add('d-none');
+        formEl.classList.remove('d-none');
+        hasAddress = false;
+    });
+
+    formEl.addEventListener('submit', async e => {
+        e.preventDefault();
+        alertEl.innerHTML = '';
+
+        const payload = {};
+        fields.forEach(f => payload[f] = formEl.querySelector(`#${f}`).value);
+
+        const method = hasAddress ? 'PUT' : 'POST';
+        console.log('Address submit method:', method);
+
+        try {
+            const res = await fetch(API, {
+                method,
+                credentials: 'include',
+                headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken')
+                },
+                body: JSON.stringify(payload)
+            });
+            const body = await res.json().catch(() => ({}));
+
+            if (res.status === 409)       throw new Error(body.message);
+            else if (!res.ok)             throw new Error(body.message || 'Save failed');
+
+            showToast(
+                method === 'POST'
+                ? 'Address created successfully.'
+                : 'Address updated successfully.'
+            );
+
+            hasAddress = true;
+            noAddressEl.classList.add('d-none');
+            formEl.classList.remove('d-none');
+
+        } catch (err) {
+            console.error(err);
+            showToast(err.message, 'error');
+        }
+    });
+});
+</script>
+{% endblock %}
+

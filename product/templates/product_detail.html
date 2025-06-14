@@ -465,7 +465,7 @@ document.addEventListener('DOMContentLoaded', () => {
             })
             .then(res => {
                 if (res.status === 401) {
-                window.location.href = '/login/';
+                window.location.href = "{% url 'login' %}";
                 throw new Error('Redirecting to login');
                 }
                 if (!res.ok) {

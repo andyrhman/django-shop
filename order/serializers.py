@@ -177,7 +177,7 @@ class ConfirmOrderSerializer(serializers.ModelSerializer):
             cart.save()
             
         for order_item in order_items:
-            order_item.status = OrderItemStatus.SELESAI
+            order_item.status = OrderItemStatus.SEDANG_DIKEMAS
             order_item.save()
             
         order.completed = True

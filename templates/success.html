@@ -34,6 +34,10 @@
                 <div class="error-details mb-4">
                     Your payment has been successfully processed!
                 </div>
+                <div id="redirect-countdown-msg" class="mb-4">
+                    Redirecting you to your orders in 
+                    <span id="redirect-countdown">8</span> seconds…
+                </div>
                 <div class="error-actions d-flex flex-wrap gap-2 justify-content-center">
                     <a href="/" class="btn btn-primary btn-lg" style="width:240px">
                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
@@ -57,32 +61,40 @@
         
         <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js" integrity="sha384-MrcW6ZMFYlzcLA8Nl+NtUVF0sA7MsXsP1UyJoMp4YLEuNSfAP+JcXn/tWtIaxVXM" crossorigin="anonymous"></script>
         <script>
-            document.addEventListener('DOMContentLoaded', async () => {
-                const params = new URLSearchParams(window.location.search);
-                const source = params.get('source');
-                if (!source) return console.warn('No source param found');
-
+        document.addEventListener('DOMContentLoaded', async () => {
+            const params = new URLSearchParams(window.location.search);
+            const source = params.get('source');
+            if (source) {
                 try {
-                    const res = await fetch('/api/checkout/orders/confirm', {
-                        method: 'POST',
-                        credentials: 'include',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'X-CSRFToken': document.cookie.split('csrftoken=')[1]?.split(';')[0] || ''
-                        },
-                        body: JSON.stringify({ source })
-                    });
-
-                    if (!res.ok) {
-                        const err = await res.json().catch(() => ({}));
-                        console.error('Order confirm failed', err);
-                    } else {
-                        console.log('Order confirmed successfully');
-                    }
+                const res = await fetch('{% url "user_order:api-confirm-order" %}', {
+                    method: 'POST',
+                    credentials: 'include',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': document.cookie.split('csrftoken=')[1]?.split(';')[0] || ''
+                    },
+                    body: JSON.stringify({ source })
+                });
+                if (!res.ok) {
+                    console.error('Order confirm failed', await res.json().catch(() => ({})));
+                }
                 } catch (err) {
                     console.error('Network error confirming order', err);
                 }
-            });
-        </script>
+            }
+
+            let seconds = 8;
+            const countdownEl = document.getElementById('redirect-countdown');
+            const timer = setInterval(() => {
+                seconds--;
+                if (seconds <= 0) {
+                    clearInterval(timer);
+                    window.location.href = '{% url "my-order" %}';
+                } else {
+                    countdownEl.textContent = seconds;
+                }
+            }, 1000);
+        });
+    </script>
     </body>
 </html>
