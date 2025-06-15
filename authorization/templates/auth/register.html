@@ -1,63 +1,179 @@
 {% load static %}
 <!DOCTYPE html>
-<html>
+<html lang="en">
   <head>
     <meta charset="utf-8" />
     <title>Register</title>
-    <script>
-      async function onSubmit(e) {
-        e.preventDefault();
-        const data = {
-          fullName: e.target.fullName.value,
-          email: e.target.email.value,
-          username: e.target.username.value,
-          password: e.target.password.value,
-          confirm_password: e.target.confirm_password.value,
-        };
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <link href="{% static 'css/bootstrap.min.css' %}" rel="stylesheet">
+
+  </head>
+  <body class="bg-light">
+    <div class="container d-flex justify-content-center align-items-center vh-100">
+      <div class="card shadow-sm w-100" style="max-width: 430px;">
+        <div class="card-body p-4">
+          <h3 class="card-title text-center mb-4">Create Account</h3>
+
+          <!-- Alert placeholder -->
+          <div id="register-alert"></div>
+
+          <form id="register-form">
+            {% csrf_token %}
+            <div class="mb-3">
+              <label for="fullName" class="form-label">Full Name</label>
+              <input
+                type="text"
+                class="form-control"
+                id="fullName"
+                name="fullName"
+                required
+              />
+            </div>
+            <div class="mb-3">
+              <label for="email" class="form-label">Email</label>
+              <input
+                type="email"
+                class="form-control"
+                id="email"
+                name="email"
+                required
+              />
+            </div>
+            <div class="mb-3">
+              <label for="username" class="form-label">Username</label>
+              <input
+                type="text"
+                class="form-control"
+                id="username"
+                name="username"
+                required
+              />
+            </div>
+            <div class="mb-3">
+              <label for="password" class="form-label">Password</label>
+              <input
+                type="password"
+                class="form-control"
+                id="password"
+                name="password"
+                required
+              />
+            </div>
+            <div class="mb-3">
+              <label for="confirm_password" class="form-label"
+                >Confirm Password</label
+              >
+              <input
+                type="password"
+                class="form-control"
+                id="confirm_password"
+                name="confirm_password"
+                required
+              />
+            </div>
+            <button
+              type="submit"
+              id="register-btn"
+              class="btn btn-primary w-100"
+            >
+              Sign Up
+            </button>
+          </form>
+
+          <div class="text-center mt-3">
+            Already have an account?
+            <a href="{% url 'login' %}">Log in</a>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  <script>
+    document.getElementById('register-form').addEventListener('submit', async e => {
+      e.preventDefault();
+      const alertBox = document.getElementById('register-alert');
+      alertBox.innerHTML = '';
+
+      const btn = document.getElementById('register-btn');
+      btn.disabled = true;
+      const origText = btn.textContent;
+      btn.innerHTML = `
+        <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+        Signing Up…
+      `;
+
+      const data = {
+        fullName: e.target.fullName.value.trim(),
+        email: e.target.email.value.trim(),
+        username: e.target.username.value.trim(),
+        password: e.target.password.value,
+        confirm_password: e.target.confirm_password.value,
+      };
+
+      try {
         const resp = await fetch("{% url 'user_auth:api-register' %}", {
-          method: "POST",
+          method: 'POST',
+          credentials: 'include',
           headers: {
-            "Content-Type": "application/json",
-            "X-CSRFToken": "{{ csrf_token }}",
+            'Content-Type': 'application/json',
+            'X-CSRFToken': "{{ csrf_token }}",
           },
           body: JSON.stringify(data),
         });
-        const json = await resp.json();
+
+        const json = await resp.json().catch(() => null);
         if (resp.ok) {
-          alert(json.message);
-          window.location.href = "{% url 'login' %}";
+          alertBox.innerHTML = `
+            <div class="alert alert-success" role="alert">
+              ${json.message}
+            </div>`;
+          setTimeout(() => {
+            window.location.href = "{% url 'login' %}";
+          }, 1500);
         } else {
-          alert(json.detail || json.message || JSON.stringify(json));
+          // show validation errors
+          if (json && typeof json === 'object') {
+            Object.values(json).forEach(arr => {
+              if (Array.isArray(arr)) {
+                arr.forEach(msg => {
+                  const text = msg.charAt(0).toUpperCase() + msg.slice(1);
+                  const div = document.createElement('div');
+                  div.className = 'alert alert-danger';
+                  div.role = 'alert';
+                  div.textContent = text;
+                  alertBox.appendChild(div);
+                });
+              }
+            });
+            if (json.message && !Array.isArray(json.message)) {
+              const message = json.message.charAt(0).toUpperCase() + json.message.slice(1);
+              alertBox.insertAdjacentHTML('beforeend', `
+                <div class="alert alert-danger" role="alert">
+                  ${message}
+                </div>`);
+            }
+          } else {
+            alertBox.innerHTML = `
+              <div class="alert alert-danger" role="alert">
+                ${JSON.stringify(json)}
+              </div>`;
+          }
         }
+      } catch (err) {
+        console.error(err);
+        alertBox.innerHTML = `
+          <div class="alert alert-danger" role="alert">
+            Unexpected error. Please try again.
+          </div>`;
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = origText;
       }
-    </script>
-  </head>
-  <body>
-    <h1>Register</h1>
-    <form onsubmit="onSubmit(event)">
-      {% csrf_token %}
-      <div>
-        <label>Full name</label>
-        <input name="fullName" type="text" required />
-      </div>
-      <div>
-        <label>Email</label>
-        <input name="email" type="email" required />
-      </div>
-      <div>
-        <label>Username</label>
-        <input name="username" type="text" required />
-      </div>
-      <div>
-        <label>Password</label>
-        <input name="password" type="password" required />
-      </div>
-      <div>
-        <label>Confirm Password</label>
-        <input name="confirm_password" type="password" required />
-      </div>
-      <button type="submit">Sign Up</button>
-    </form>
-    <p>Already have an account? <a href="{% url 'login' %}">Log in</a></p>
+    });
+  </script>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0/dist/js/bootstrap.bundle.min.js"></script>
+
   </body>
 </html>

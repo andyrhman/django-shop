@@ -34,7 +34,7 @@ class RegisterAPIView(APIView):
         user = serializer.save() # * Declaring user variable for email send listener
 
         # Emit only for registration
-        user_registered.send(sender=self.__class__, user=user)
+        # user_registered.send(sender=self.__class__, user=user)
 
         return Response({"message": "Successfully Registered"})
 
