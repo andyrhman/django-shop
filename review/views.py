@@ -18,7 +18,7 @@ class UserReviewAPIView(generics.CreateAPIView, generics.ListAPIView):
         return ReviewSerializer
     
     def get_queryset(self):
-        return Review.objects.filter(product=self.kwargs.get('id'))
+        return Review.objects.filter(user=self.request.user)
     
 class AdminReviewAPIView(generics.ListAPIView, generics.RetrieveAPIView):
     authentication_classes = [JWTAuthentication]

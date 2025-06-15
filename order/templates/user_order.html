@@ -3,35 +3,60 @@
 
 {% block content %}
         <div class="container-fluid py-2">
-            <h1 class="text-center display-6">Shop Detail</h1>
+            <h1 class="text-center display-6">Orders and Reviews</h1>
             <ol class="breadcrumb justify-content-center mb-0">
                 <li class="breadcrumb-item"><a href="#">Home</a></li>
                 <li class="breadcrumb-item"><a href="{% url 'my-order' %}">My Orders</a></li>
             </ol>
         </div>
         <div class="container-fluid py-5">
-            <div class="container py-5">
+          <div class="container py-5">
+            <!-- Nav tabs -->
+            <ul class="nav nav-tabs mb-4" id="accountTabs" role="tablist">
+              <li class="nav-item" role="presentation">
+                <button class="nav-link active" id="orders-tab" data-bs-toggle="tab"
+                        data-bs-target="#orders-pane" type="button">Orders</button>
+              </li>
+              <li class="nav-item" role="presentation">
+                <button class="nav-link" id="reviews-tab" data-bs-toggle="tab"
+                        data-bs-target="#reviews-pane" type="button">Reviews</button>
+              </li>
+            </ul>
+
+            <div class="tab-content">
+              <!-- ORDERS PANE -->
+              <div class="tab-pane fade show active" id="orders-pane">
                 <div class="table-responsive">
-                    <table class="table">
-                        <thead>
-                            <tr>
-                                <th>Order ID</th>
-                                <th>Date</th>
-                                <th># Items</th>
-                                <th>Status</th>
-                                <th>Action</th>
-                            </tr>
-                        </thead>
-                        <tbody id="orders-body">
-                        </tbody>
-                    </table>
+                  <table class="table">
+                    <thead>
+                      <tr>
+                        <th>Order ID</th>
+                        <th>Date</th>
+                        <th># Items</th>
+                        <th>Status</th>
+                        <th>Action</th>
+                      </tr>
+                    </thead>
+                    <tbody id="orders-body">
+                      <!-- injected by JS -->
+                    </tbody>
+                  </table>
                 </div>
+              </div>
+
+              <!-- REVIEWS PANE -->
+              <div class="tab-pane fade" id="reviews-pane">
+                <div id="reviews-container" class="row gy-4">
+                  <!-- injected by JS -->
+                </div>
+              </div>
             </div>
+          </div>
         </div>
 
 
   <div class="modal fade" id="orderModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-lg modal-dialog-centered">
+    <div class="modal-dialog modal-xl modal-dialog-centered">
       <div class="modal-content">
         <div class="modal-header">
           <h5 class="modal-title">Order Details</h5>
@@ -47,6 +72,7 @@
                 <th>Qty</th>
                 <th>Status</th>
                 <th>Line Total</th>
+                <th>Action</th>
               </tr>
             </thead>
             <tbody id="modal-items-body">
@@ -56,6 +82,40 @@
       </div>
     </div>
   </div>
+
+<div class="modal fade" id="reviewModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-xl modal-dialog-centered">
+    <div class="modal-content p-3">
+      <div class="modal-header">
+        <h5 class="modal-title">Write a Review</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div id="review-product-name" class="mb-3 fw-bold"></div>
+        <div id="star-picker" class="mb-3"></div>
+        <textarea id="review-comment" class="form-control mb-3" rows="3" placeholder="Your comment"></textarea>
+
+        <div id="file-dropzone"
+            class="border border-dashed rounded p-5 text-center mb-3"
+            style="cursor: pointer; position: relative;">
+          <input type="file" id="review-image-input"
+                accept="image/*"
+                style="position:absolute;top:0;left:0;right:0;bottom:0;opacity:0;cursor:pointer;">
+          <div id="dropzone-text">
+            <i class="fas fa-cloud-upload-alt fa-3x mb-2 text-secondary"></i>
+            <p class="mb-0">Drag & drop an image here, or click to select</p>
+          </div>
+          <div id="preview-container" class="d-none">
+            <img id="preview-img" src="" class="img-fluid rounded" style="max-height: 200px;">
+            <button id="remove-image" class="btn btn-sm btn-link text-danger mt-2">Remove</button>
+          </div>
+        </div>
+        <button id="submit-review" class="btn btn-primary w-100">Submit Review</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 {% endblock %}
 
 {% block extra_scripts %}
@@ -70,7 +130,21 @@ document.addEventListener('DOMContentLoaded', () => {
   const ordersBody     = document.getElementById('orders-body');
   const modalBody      = document.getElementById('modal-items-body');
   const orderModalEls  = document.getElementById('orderModal');
+  const reviewsPane  = document.getElementById('reviews-pane');
+  const reviewsCon   = document.getElementById('reviews-container');
+  const accountTabs  = document.getElementById('accountTabs');
   const orderModal     = new bootstrap.Modal(orderModalEls);
+  const reviewModalEls = document.getElementById('reviewModal');
+  const reviewModal    = new bootstrap.Modal(reviewModalEls);
+
+  ordersBody.innerHTML = `
+    <tr>
+      <td colspan="5">
+        <div class="d-flex justify-content-center py-5">
+          <div class="spinner-border" role="status"><span class="visually-hidden">Loading...</span></div>
+        </div>
+      </td>
+    </tr>`;
 
   fetch("{% url 'user_order:api-get-user-order' %}", {
     credentials: 'include',
@@ -82,6 +156,8 @@ document.addEventListener('DOMContentLoaded', () => {
     return res.json();
   })
   .then(orders => {
+    ordersBody.innerHTML = '';
+
     const orderMap = {};
     orders.forEach(order => orderMap[order.id] = order);
 
@@ -123,24 +199,156 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const tr = document.createElement('tr');
             tr.innerHTML = `
-                <td>
-                <div class="d-flex align-items-center">
-                    <img src="${item.product.image}"
-                        style="width:60px; height:60px; object-fit:cover; border-radius:4px"
-                        class="me-3" alt="${item.product.title}">
-                    <span>${item.product.title}</span>
-                </div>
-                </td>
-                <td>${item.variant.name}</td>
-                <td>${formattedUnit}</td>
-                <td>${qty}</td>
-                <td>${item.status}</td>
-                <td>${formattedLine}</td>
-            `;
+              <td>${item.product.title}</td>
+              <td>${item.variant.name}</td>
+              <td>${formattedUnit}</td>
+              <td>${qty}</td>
+              <td>${item.status}</td>
+              <td>${formattedLine}</td>
+              <td>
+                <button class="btn btn-sm btn-outline-secondary review-btn"
+                        data-order-id="${order.id}"
+                        data-product-id="${item.product.id}"
+                        data-variant-id="${item.variant.id}"
+                        data-product-name="${item.product.title}">
+                  Create Review
+                </button>
+              </td>`;
+
             modalBody.appendChild(tr);
         });
 
         orderModal.show();
+
+        modalBody.querySelectorAll('.review-btn').forEach(btn => {
+          btn.addEventListener('click', () => {
+            const orderId   = btn.dataset.orderId;
+            const productId = btn.dataset.productId;
+            const variantId = btn.dataset.variantId;
+            const productName = btn.dataset.productName;
+
+            document.getElementById('review-product-name').textContent = productName;
+
+            const starPicker = document.getElementById('star-picker');
+            starPicker.innerHTML = '';
+            let selectedStar = 0;
+
+            for (let i = 1; i <= 5; i++) {
+              const star = document.createElement('i');
+              star.className = 'far fa-star fa-2x me-1';
+              star.dataset.value = i;
+              star.style.cursor = 'pointer';
+              star.addEventListener('click', () => {
+                selectedStar = i;
+                starPicker.querySelectorAll('i').forEach(s => {
+                  const val = parseInt(s.dataset.value, 10);
+                  s.className = val <= i
+                    ? 'fas fa-star fa-2x me-1 text-warning'
+                    : 'far fa-star fa-2x me-1';
+                });
+              });
+              starPicker.appendChild(star);
+            }
+
+// after showing reviewModal and setting productName & stars…
+
+// File upload logic
+const dropzone = document.getElementById('file-dropzone');
+const fileInput = document.getElementById('review-image-input');
+const previewContainer = document.getElementById('preview-container');
+const previewImg = document.getElementById('preview-img');
+const removeBtn = document.getElementById('remove-image');
+let selectedFile = null;
+
+// Highlight on drag
+;['dragenter','dragover'].forEach(evt =>
+  dropzone.addEventListener(evt, e => {
+    e.preventDefault();
+    dropzone.classList.add('bg-light');
+  })
+);
+;['dragleave','drop'].forEach(evt =>
+  dropzone.addEventListener(evt, e => {
+    e.preventDefault();
+    dropzone.classList.remove('bg-light');
+  })
+);
+
+// Handle drop
+dropzone.addEventListener('drop', e => {
+  selectedFile = e.dataTransfer.files[0];
+  showPreview(selectedFile);
+});
+
+// Handle click → file dialog
+fileInput.addEventListener('change', () => {
+  selectedFile = fileInput.files[0];
+  showPreview(selectedFile);
+});
+
+// Show preview
+function showPreview(file) {
+  if (!file) return;
+  const url = URL.createObjectURL(file);
+  previewImg.src = url;
+  previewContainer.classList.remove('d-none');
+  document.getElementById('dropzone-text').classList.add('d-none');
+}
+
+// Remove file
+removeBtn.addEventListener('click', e => {
+  e.preventDefault();
+  selectedFile = null;
+  fileInput.value = '';
+  previewContainer.classList.add('d-none');
+  document.getElementById('dropzone-text').classList.remove('d-none');
+});
+
+// Submit review using FormData
+document.getElementById('submit-review').onclick = async () => {
+  const comment = document.getElementById('review-comment').value;
+  if (!selectedStar) {
+    return Toastify({ text: 'Please select a star rating', gravity:'top', position:'center', duration:3000 }).showToast();
+  }
+  const fd = new FormData();
+  fd.append('star', selectedStar);
+  fd.append('comment', comment);
+  if (selectedFile) {
+    fd.append('image', selectedFile);
+  }
+  fd.append('order_id', orderId);
+  fd.append('product_id', productId);
+  fd.append('variant_id', variantId);
+
+  try {
+    const res = await fetch("{% url 'user_review:api-create-review' %}", {
+      method: 'POST',
+      credentials: 'include',
+      headers: {
+        'X-CSRFToken': document.cookie.split('csrftoken=')[1]?.split(';')[0] || ''
+      },
+      body: fd
+    });
+    const body = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(body.error || body.message || 'Review failed');
+    Toastify({ text: 'Review submitted!', gravity:'top', position:'center', duration:3000 }).showToast();
+    reviewModal.hide();
+  } catch (err) {
+    console.error(err);
+    Toastify({
+      text: err.message,
+      gravity:'top', position:'center', duration:3000,
+      style:{ background:'linear-gradient(to right,#e52d27,#b31217)' }
+    }).showToast();
+  }
+};
+
+
+            orderModal.hide();
+            reviewModal.show();
+          });
+        });
+
       });
     });
   })
@@ -152,6 +360,66 @@ document.addEventListener('DOMContentLoaded', () => {
           Unable to load your orders.
         </td>
       </tr>`;
+  });
+  function showCardSpinner() {
+    reviewsCon.innerHTML = `
+      <div class="col-12 text-center py-5">
+        <div class="spinner-border" role="status"><span class="visually-hidden">Loading...</span></div>
+      </div>`;
+  }
+  // 2) When Reviews tab is shown, fetch and render user reviews
+  accountTabs.addEventListener('shown.bs.tab', e => {
+    if (e.target.id !== 'reviews-tab') return;
+    showCardSpinner();
+    fetch("{% url 'user_review:api-create-review' %}",{credentials:'include'})
+      .then(r=> r.ok? r.json(): Promise.reject())
+      .then(revs => {
+        reviewsCon.innerHTML = '';
+        if (revs.length === 0) {
+          reviewsCon.innerHTML = `
+            <div class="col-12 text-center text-muted py-4">
+              You haven’t written any reviews yet.
+            </div>`;
+          return;
+        }
+        revs.forEach(r => {
+          // build star visuals
+          let stars = '';
+          for (let i = 1; i <= 5; i++) {
+            stars += `<i class="${i <= r.star ? 'fas' : 'far'} fa-star text-warning me-1"></i>`;
+          }
+          const date = new Date(r.created_at).toLocaleDateString();
+
+          const col = document.createElement('div');
+          col.className = 'col-12 mb-4';
+
+          col.innerHTML = `
+            <div class="card shadow-sm">
+              <div class="row g-0 align-items-center">
+                <div class="col-md-4">
+                  <img src="${r.product.image}" class="img-fluid rounded-start" alt="${r.product.title}">
+                </div>
+                <div class="col-md-8">
+                  <div class="card-body">
+                    <h6 class="card-title">${r.product.title}</h6>
+                    <div class="mb-2">${stars}</div>
+                    <p class="small mb-2">${r.comment}</p>
+                    ${r.image ? `<img src="${r.image}" class="img-fluid rounded mb-2" style="max-height:120px;">` : ''}
+                    <div class="text-end text-muted small">${date}</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          `;
+          reviewsCon.appendChild(col);
+        });
+      })
+      .catch(() => {
+        reviewsCon.innerHTML = `
+          <div class="col-12 text-center text-danger py-4">
+            Unable to load reviews.
+          </div>`;
+      });
   });
 });
 </script>
