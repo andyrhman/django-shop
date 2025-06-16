@@ -23,7 +23,7 @@ def send_verification_email(sender, user, **kwargs):
         used=False,
     )
 
-    origin = config('ORIGIN_2')
+    origin = config('ORIGIN')
     verify_url = f"{origin}/verify/{token_str}"
 
     html_content = render_to_string(

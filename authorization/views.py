@@ -34,9 +34,9 @@ class RegisterAPIView(APIView):
         user = serializer.save() # * Declaring user variable for email send listener
 
         # Emit only for registration
-        # user_registered.send(sender=self.__class__, user=user)
+        user_registered.send(sender=self.__class__, user=user)
 
-        return Response({"message": "Successfully Registered"})
+        return Response({"message": "Successfully Registered, please check your email to verify your account!"}, status=status.HTTP_201_CREATED)
 
 
 class LoginAPIView(APIView):
@@ -61,6 +61,12 @@ class LoginAPIView(APIView):
         if not user.check_password(data["password"]):
             return Response(
                 {"message": "Invalid password"}, status=status.HTTP_400_BAD_REQUEST
+            )
+            
+        if user.is_verified is False:
+            return Response(
+                {"message": "Please verify your account first"},
+                status=status.HTTP_403_FORBIDDEN,
             )
 
         scope = "user" if "api/user" in request.path else "admin"
@@ -177,11 +183,9 @@ class ResendVerifyAPIView(APIView):
             used=False,
         )
 
-        #Build verification URL
-        origin = config('ORIGIN_2')
+        origin = config('ORIGIN')
         verify_url = f"{origin}/verify/{token_str}"
 
-        # Render email HTML from a template (e.g. templates/auth.html)
         html_content = render_to_string(
             "email_template.html",
             {
@@ -192,7 +196,7 @@ class ResendVerifyAPIView(APIView):
 
         send_mail(
             subject="Verify your email",
-            message="",  # no plain-text body
+            message="",
             from_email="service@mail.com",
             recipient_list=[user.email],
             html_message=html_content,
@@ -310,3 +314,6 @@ class RegisterPageView(TemplateView):
 
 class LoginPageView(TemplateView):
     template_name = "auth/login.html"
+
+class VerifyPageView(TemplateView):
+    template_name = "auth/verify.html"
