@@ -1,11 +1,14 @@
 import datetime
+import json
 import secrets
 from django.conf import settings
+from django.forms import model_to_dict
 from django.utils import timezone
 from django.template.loader import render_to_string
 from django.core.mail import send_mail
 from django.dispatch import Signal, receiver
 from decouple import config
+from app.producer import producer
 from core.models import Token
 
 user_registered = Signal()
@@ -26,15 +29,11 @@ def send_verification_email(sender, user, **kwargs):
     origin = config('ORIGIN')
     verify_url = f"{origin}/verify/{token_str}"
 
-    html_content = render_to_string(
-        "email_template.html",
-        {"name": user.fullName, "url": verify_url},
-    )
+    payload = {
+        "event": "user_registered",
+        "user": model_to_dict(user),
+        "verify_url": verify_url,
+    }
+    producer.send(config('KAFKA_TOPIC', default='default'), payload)
+    producer.flush()
 
-    send_mail(
-        subject="Verify your email",
-        message="",
-        from_email="service@mail.com",
-        recipient_list=[user.email],
-        html_message=html_content,
-    )
