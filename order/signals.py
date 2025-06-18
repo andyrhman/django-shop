@@ -7,7 +7,7 @@ from django.template.loader import render_to_string
 from django.core.mail import send_mail
 
 from decouple import config
-from app.producer import producer
+from app.producer import send_message
 from core.models import Order
 
 order_completed = Signal()
@@ -35,5 +35,4 @@ def send_order_completed_email(sender, *, order: Order, **kwargs):
         "order": data,
     }
     
-    producer.send(config('KAFKA_TOPIC', default='default'), payload)
-    producer.flush()
+    send_message(config('KAFKA_TOPIC', default='default'), payload)

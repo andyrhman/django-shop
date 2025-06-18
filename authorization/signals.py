@@ -8,7 +8,7 @@ from django.template.loader import render_to_string
 from django.core.mail import send_mail
 from django.dispatch import Signal, receiver
 from decouple import config
-from app.producer import producer
+from app.producer import send_message
 from core.models import Token
 
 user_registered = Signal()
@@ -34,6 +34,5 @@ def send_verification_email(sender, user, **kwargs):
         "user": model_to_dict(user),
         "verify_url": verify_url,
     }
-    producer.send(config('KAFKA_TOPIC', default='default'), payload)
-    producer.flush()
+    send_message.send(config('KAFKA_TOPIC', default='default'), payload)
 

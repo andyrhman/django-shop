@@ -7,6 +7,7 @@ from django.core.exceptions import ObjectDoesNotExist
 from django.core.mail import send_mail
 from django.template.loader import render_to_string
 from django.views.generic import TemplateView
+import requests
 from rest_framework import exceptions, status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -25,18 +26,10 @@ from authorization.signals import user_registered
 class RegisterAPIView(APIView):
     def post(self, request):
         data = request.data
-
-        if data["password"] != data["confirm_password"]:
-            raise exceptions.APIException("Password do not match!")
-
-        serializer = UserSerializer(data=data, context={"request": request})
-        serializer.is_valid(raise_exception=True)
-        user = serializer.save() # * Declaring user variable for email send listener
-
-        # Emit only for registration
-        user_registered.send(sender=self.__class__, user=user)
-
-        return Response({"message": "Successfully Registered, please check your email to verify your account!"}, status=status.HTTP_201_CREATED)
+        
+        response = requests.post('http://localhost:8001/api/user/register/', json=data)
+        
+        return Response(response.json(), status=response.status_code)
 
 
 class LoginAPIView(APIView):
