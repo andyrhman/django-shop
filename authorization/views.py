@@ -27,51 +27,38 @@ class RegisterAPIView(APIView):
     def post(self, request):
         data = request.data
         
-        response = requests.post('http://localhost:8001/api/user/register/', json=data)
+        response = requests.post('http://localhost:8001/api/user/register', json=data)
         
         return Response(response.json(), status=response.status_code)
 
 
 class LoginAPIView(APIView):
     def post(self, request):
-        data = request.data
+        data = request.data.copy()
+        data['scope'] = "user" if "api/user" in request.path else "admin"
 
-        if "email" in data:
-            try:
-                user = User.objects.get(email=data["email"].lower())
-            except ObjectDoesNotExist:
-                return Response(
-                    {"message": "Invalid email!"}, status=status.HTTP_400_BAD_REQUEST
-                )
-        elif "username" in data:
-            try:
-                user = User.objects.get(username=data["username"].lower())
-            except ObjectDoesNotExist:
-                return Response(
-                    {"message": "Invalid username!"}, status=status.HTTP_400_BAD_REQUEST
-                )
+        remote = requests.post('http://localhost:8001/api/user/login', json=data, timeout=5)
 
-        if not user.check_password(data["password"]):
-            return Response(
-                {"message": "Invalid password"}, status=status.HTTP_400_BAD_REQUEST
-            )
-            
-        if user.is_verified is False:
-            return Response(
-                {"message": "Please verify your account first"},
-                status=status.HTTP_403_FORBIDDEN,
-            )
+        try:
+            payload = remote.json()
+        except ValueError:
+            return Response({"message": "Invalid response from auth service"}, status=status.HTTP_502_BAD_GATEWAY)
 
-        scope = "user" if "api/user" in request.path else "admin"
+        if not remote.ok:
+            return Response(payload, status=remote.status_code)
 
-        if user.is_user and scope == "admin":
-            raise exceptions.AuthenticationFailed("Unauthorized")
+        token = payload.get('jwt')
+        if token is None:
+            return Response({"message": "Auth service did not return a token"}, status=status.HTTP_502_BAD_GATEWAY)
 
-        token = JWTAuthentication.generate_jwt(user.id, scope)
-        response = Response()
-        response.set_cookie(key="user_session", value=token, httponly=True)
-        response.data = {"message": "Successfully logged in!"}
-
+        response = Response({"message": "Successfully logged in!"}, status=status.HTTP_200_OK)
+        
+        response.set_cookie(
+            key="user_session",
+            value=token,
+            httponly=True,
+        )
+        
         return response
 
 
