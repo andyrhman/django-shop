@@ -15,29 +15,53 @@ from rest_framework.views import APIView
 
 from authorization.authentication import JWTAuthentication
 from authorization.serializers import UserSerializer
+from authorization.services import UserService
 from core.models import Token, User
 from decouple import config
 from google.oauth2 import id_token
 from google.auth.transport.urllib3 import Request as GoogleRequest
 from django.views.generic import TemplateView
-from authorization.signals import user_registered
 
 # Create your views here.
+def _detect_scope_from_path(path: str) -> str:
+    """
+    Return 'admin' if the monolith request path starts with /api/admin/,
+    else 'user'.
+    """
+    return 'admin' if path.lower().startswith('/api/admin/') else 'user'
+
 class RegisterAPIView(APIView):
     def post(self, request):
         data = request.data
-        
-        response = requests.post('http://localhost:8001/api/user/register', json=data)
-        
-        return Response(response.json(), status=response.status_code)
+        remote = UserService.post(
+            'user/register/',
+            json=data,
+            timeout=5
+        )
+
+        try:
+            payload = remote.json()
+        except ValueError:
+            return Response(
+                {"message": "Invalid response from user service"},
+                status=status.HTTP_502_BAD_GATEWAY
+            )
+
+        return Response(payload, status=remote.status_code)
 
 
 class LoginAPIView(APIView):
     def post(self, request):
-        data = request.data.copy()
-        data['scope'] = "user" if "api/user" in request.path else "admin"
+        scope = _detect_scope_from_path(request.path)
 
-        remote = requests.post('http://localhost:8001/api/user/login', json=data, timeout=5)
+        data = request.data.copy()
+        data['scope'] = scope
+
+        remote = UserService.post(
+            f'{scope}/login',
+            json=data,
+            timeout=5
+        )
 
         try:
             payload = remote.json()
@@ -63,79 +87,130 @@ class LoginAPIView(APIView):
 
 
 class UserAPIView(APIView):
-    authentication_classes = [JWTAuthentication]
-    permission_classes = [IsAuthenticated]
-
     def get(self, request):
-        user = request.user
+        scope = _detect_scope_from_path(request.path)
+        token = request.COOKIES.get('user_session')
+        if not token:
+            return Response({"message": "Unauthenticated"}, status=status.HTTP_401_UNAUTHORIZED)
 
-        serializer = UserSerializer(user)
+        resp = UserService.get(
+            f'{scope}',
+            cookies={'user_session': token},
+            timeout=5
+        )
 
-        return Response(serializer.data)
-
-
-class LogoutAPIView(APIView):
-    authentication_classes = [JWTAuthentication]
-    permission_classes = [IsAuthenticated]
-
-    def post(self, _):
-        response = Response()
-        response.delete_cookie(key="user_session")
-        response.data = {"message": "Success"}
-        return response
-
-
-class UpdateInfoAPIView(APIView):
-    authentication_classes = [JWTAuthentication]
-    permission_classes = [IsAuthenticated]
-
-    def put(self, request, pk=None):
         try:
-            data = request.data
-            user = request.user
-            serializer = UserSerializer(
-                user,
-                data={
-                    "fullName": data.get("fullName", user.fullName),
-                    "email": data.get("email", user.email),
-                    "username": data.get("username", user.username),
-                },
-                context={"request": request},
-                partial=True,
+            payload = resp.json()
+        except ValueError:
+            return Response(
+                {"message": "Invalid response from auth service"},
+                status=502
             )
 
-            serializer.is_valid(raise_exception=True)
-            serializer.save()
-            return Response(serializer.data)
-        except exceptions.ValidationError as e:
-            if isinstance(e.detail, dict):
-                errors = {key: value[0] for key, value in e.detail.items()}
-                first_field = next(iter(errors))
-                field_name = first_field.replace("_", " ").capitalize()
-                if "already exists" in errors[first_field]:
-                    message = f"{field_name} already exists."
-                else:
-                    message = f"{field_name} error: {errors[first_field]}"
-            else:
-                message = str(e.detail)
-            return Response({"message": message}, status=status.HTTP_400_BAD_REQUEST)
+        if not resp.ok:
+            return Response(payload, status=resp.status_code)
+
+        return Response(payload, status=resp.status_code)
+
+class LogoutAPIView(APIView):
+    def post(self, request):
+        scope = _detect_scope_from_path(request.path)
+        token = request.COOKIES.get('user_session')
+        if not token:
+            return Response({'message': 'No session'}, status=status.HTTP_401_UNAUTHORIZED)
+
+        remote = UserService.post(
+            f'{scope}/logout',
+            cookies={'user_session': token},
+            timeout=5
+        )
+
+        try:
+            payload = remote.json()
+        except ValueError:
+            return Response({'message': 'Bad response from auth service'}, status=status.HTTP_502_BAD_GATEWAY)
+
+        if not remote.ok:
+            return Response(payload, status=remote.status_code)
+
+        resp = Response({'message': 'Successfully logged out'}, status=status.HTTP_200_OK)
+        resp.delete_cookie('user_session')
+        return resp
+
+class UpdateInfoAPIView(APIView):
+    def put(self, request, pk=None):
+        scope = _detect_scope_from_path(request.path)
+        token = request.COOKIES.get('user_session')
+        if not token:
+            return Response({"message": "Unauthenticated"}, status=status.HTTP_401_UNAUTHORIZED)
+
+        payload = {
+            k: v for k, v in {
+                "fullName": request.data.get("fullName"),
+                "email":    request.data.get("email"),
+                "username": request.data.get("username"),
+            }.items() if v is not None
+        }
+
+        remote = UserService.put(
+            f'{scope}/info',
+            json=payload,
+            cookies={'user_session': token},
+            timeout=5
+        )
+
+        try:
+            data = remote.json()
+        except ValueError:
+            return Response(
+                {"message": "Invalid response from user service"},
+                status=status.HTTP_502_BAD_GATEWAY
+            )
+
+        if not remote.ok:
+            return Response(data, status=remote.status_code)
+
+        return Response(data, status=status.HTTP_200_OK)
 
 
 class UpdatePasswordAPIView(APIView):
-    authentication_classes = [JWTAuthentication]
-    permission_classes = [IsAuthenticated]
-
     def put(self, request, pk=None):
-        data = request.data
-        user = request.user
-        
-        if data['password'] != data['confirm_password']:
-            raise exceptions.APIException('Password do not match')
+        scope = _detect_scope_from_path(request.path)
+        token = request.COOKIES.get('user_session')
+        if not token:
+            return Response({"message": "Unauthenticated"}, status=status.HTTP_401_UNAUTHORIZED)
 
-        user.set_password(data["password"])
-        user.save()
+        pwd = request.data.get('password')
+        cpwd = request.data.get('confirm_password')
+        if pwd != cpwd:
+            return Response(
+                {"message": "Password do not match"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
-        return Response(status=status.HTTP_204_NO_CONTENT)
+        remote = UserService.put(
+            f'{scope}/password',
+            json={'password': pwd, 'confirm_password': cpwd},
+            cookies={'user_session': token},
+            timeout=5
+        )
+
+        # Try to parse JSON, but if there's no body just set payload to None
+        payload = None
+        if remote.text:
+            try:
+                payload = remote.json()
+            except ValueError:
+                return Response(
+                    {"message": "Invalid response from user service"},
+                    status=status.HTTP_502_BAD_GATEWAY
+                )
+
+        if not remote.ok:
+            return Response(payload or {"message": "Error from user service"},
+                            status=remote.status_code)
+
+        return Response(status=remote.status_code)
             
 class ResendVerifyAPIView(APIView):
     def post(self, request):
@@ -188,106 +263,25 @@ class ResendVerifyAPIView(APIView):
             status=status.HTTP_200_OK,
         ) 
 
-
 class VerifyAccountAPIView(APIView):
-   
-    def put(self, _, token=''):
-        user_token = Token.objects.filter(token=token).first()
-        
-        if not user_token or user_token.expiresAt < datetime.datetime.now(datetime.timezone.utc) :
-            return Response({'message': 'Token is invalid or expired'}, status=status.HTTP_400_BAD_REQUEST)
-        
-        if not user_token:
-            return Response({'message': 'Invalid verify ID'}, status=status.HTTP_400_BAD_REQUEST)
-        
-        if user_token.used:
-            return Response({'message': 'Verify ID has already been used'}, status=status.HTTP_400_BAD_REQUEST)
-        
-        user = User.objects.filter(email=user_token.email, pk=user_token.user.id).first()
-        
-        if not user:
-            return Response({'message': 'User not found'}, status=status.HTTP_400_BAD_REQUEST)
-        elif user.is_verified:
-            return Response({'message': 'Your account has already been verified'}, status=status.HTTP_400_BAD_REQUEST)
-        elif user.email != user_token.email and user.id != user_token.user:
-            return Response({'message': 'Invalid Verify ID or email'}, status=status.HTTP_400_BAD_REQUEST)
-        
-        user_token.used = True
-        user_token.save()
-        user.is_verified = True
-        user.save()
-        
-        return Response({"message": "Account Verified Successfully"}, status=status.HTTP_202_ACCEPTED)
+    def put(self, request, token: str):
+        remote = UserService.put(
+            f'verify/{token}/',
+            timeout=5
+        )
 
-class GoogleAuthAPIView(APIView):
-    def post(self, request):
-        token = request.data.get("token")
-        remember_me = request.data.get("rememberMe", False)
-
-        if not token:
-            return Response(
-                {"message": "Token is required"},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        # 1) Verify the Google ID token
         try:
-            idinfo = id_token.verify_oauth2_token(
-                token,
-                GoogleRequest(),
-                config("GOOGLE_CLIENT_ID"),
-            )
+            payload = remote.json()
         except ValueError:
             return Response(
-                {"message": "Unauthorized"},
-                status=status.HTTP_401_UNAUTHORIZED,
+                {"message": "Invalid response from user service"},
+                status=status.HTTP_502_BAD_GATEWAY
             )
 
-        email = idinfo.get("email")
-        if not email:
-            return Response(
-                {"message": "Unauthorized"},
-                status=status.HTTP_401_UNAUTHORIZED,
-            )
+        if not remote.ok:
+            return Response(payload, status=remote.status_code)
 
-        # 2) Find or create the user
-        try:
-            user = User.objects.get(email=email)
-        except User.DoesNotExist:
-            # generate random credentials
-            random_username = f"user{random.randint(1000, 9999)}"
-            random_password = "".join(
-                secrets.choice(string.ascii_letters + string.digits) for _ in range(10)
-            )
-            user = User(
-                fullName=random_username,
-                username=random_username,
-                email=email,
-            )
-            user.set_password(random_password)
-            user.save()
-
-        # 3) Issue JWT
-        scope = "user"  # or detect from path if you need admin vs user
-        jwt_token = JWTAuthentication.generate_jwt(user.id, scope)
-
-        # 4) Set cookie with correct expiration
-        max_age = 365 * 24 * 60 * 60 if remember_me else 7 * 24 * 60 * 60
-        expires = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(seconds=max_age)
-
-        response = Response(
-            {"message": "Successfully logged in"},
-            status=status.HTTP_200_OK,
-        )
-        response.set_cookie(
-            key="user_session",
-            value=jwt_token,
-            httponly=True,
-            expires=expires,
-            secure=not settings.DEBUG,  # optional: only send over HTTPS in prod
-            samesite="Lax",
-        )
-        return response
+        return Response(payload, status=remote.status_code)
 
 class RegisterPageView(TemplateView):
     template_name = "auth/register.html"
