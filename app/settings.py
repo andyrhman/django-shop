@@ -25,8 +25,7 @@ SECRET_KEY = 'django-insecure-)f-u*up2cl(ok#y@-^$^aax!bp0=t8ihyesbx-mh&qu!ij9=ez
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['*']
-
+ALLOWED_HOSTS = ['shop_users', 'shop_users:8000', '*']
 
 # Application definition
 
@@ -62,6 +61,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'authorization.middleware.UserMicroserviceAuthMiddleware',
 ]
 
 ROOT_URLCONF = 'app.urls'

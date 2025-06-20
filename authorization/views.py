@@ -85,32 +85,24 @@ class LoginAPIView(APIView):
         
         return response
 
-
 class UserAPIView(APIView):
     def get(self, request):
-        scope = _detect_scope_from_path(request.path)
-        token = request.COOKIES.get('user_session')
-        if not token:
-            return Response({"message": "Unauthenticated"}, status=status.HTTP_401_UNAUTHORIZED)
-
-        resp = UserService.get(
-            f'{scope}',
-            cookies={'user_session': token},
-            timeout=5
-        )
+        user = request.user_ms
+        if not user:
+            return Response({"message": "Unauthenticated"}, status=401)
 
         try:
-            payload = resp.json()
+            payload = user.json()
         except ValueError:
             return Response(
                 {"message": "Invalid response from auth service"},
                 status=502
             )
 
-        if not resp.ok:
-            return Response(payload, status=resp.status_code)
+        if not user.ok:
+            return Response(payload, status=user.status_code)
 
-        return Response(payload, status=resp.status_code)
+        return Response(payload, status=user.status_code)
 
 class LogoutAPIView(APIView):
     def post(self, request):
@@ -218,55 +210,26 @@ class ResendVerifyAPIView(APIView):
         
         if not data['email']:
             raise exceptions.APIException("Provide your email address")
-
-        user = User.objects.filter(email=data['email']).first()
         
-        if not user:
-            raise exceptions.APIException("Email not found")
+        remote = UserService.post('verify', json=data, timeout=5)
         
-        if user.is_verified:
-            raise exceptions.APIException("Your account has already been verified")
-        
-        token_str = secrets.token_hex(16)
-        expiresAt = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(minutes=1)
-
-        Token.objects.create(
-            token=token_str,
-            email=user.email,
-            user=user,
-            expiresAt=expiresAt ,
-            used=False,
-        )
-
-        origin = config('ORIGIN')
-        verify_url = f"{origin}/verify/{token_str}"
-
-        html_content = render_to_string(
-            "email_template.html",
-            {
-                "name": user.fullName,
-                "url": verify_url,
-            },
-        )
-
-        send_mail(
-            subject="Verify your email",
-            message="",
-            from_email="service@mail.com",
-            recipient_list=[user.email],
-            html_message=html_content,
-            fail_silently=False,
-        )
-
+        try:
+            payload = remote.json()
+        except ValueError:
+            return Response(
+                {"message": "Invalid response from user service"},
+                status=status.HTTP_502_BAD_GATEWAY
+            )
+            
         return Response(
-            {"message": "Email has been sent successfully"},
-            status=status.HTTP_200_OK,
+            payload,
+            status=remote.status_code
         ) 
 
 class VerifyAccountAPIView(APIView):
     def put(self, request, token: str):
         remote = UserService.put(
-            f'verify/{token}/',
+            f'verify/{token}',
             timeout=5
         )
 

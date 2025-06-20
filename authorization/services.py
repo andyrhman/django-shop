@@ -4,7 +4,7 @@ import requests
 
 class UserService:
     # base_url = os.getenv('USERS_MS').rstrip('/')
-    base_url = 'http://localhost:8001'
+    base_url = 'http://shop_users:8000'
 
     @staticmethod
     def get(path, *, headers=None, cookies=None, timeout=None):
@@ -12,15 +12,17 @@ class UserService:
         return requests.get(url, headers=headers, cookies=cookies, timeout=timeout)
 
     @staticmethod
-    def post(path, *, json=None, data=None, headers=None, cookies=None, timeout=None):
+    def post(path, *, json=None, headers=None, cookies=None, timeout=None):
         url = f"{UserService.base_url}/api/{path.lstrip('/')}"
+        # ensure Host header has no port
+        hdrs = {} if headers is None else dict(headers)
+        hdrs['Host'] = 'shop_users'
         return requests.post(
             url,
             json=json,
-            data=data,
-            headers=headers,
+            headers=hdrs,
             cookies=cookies,
-            timeout=timeout
+            timeout=timeout,
         )
         
     @staticmethod
