@@ -12,17 +12,15 @@ class UserService:
         return requests.get(url, headers=headers, cookies=cookies, timeout=timeout)
 
     @staticmethod
-    def post(path, *, json=None, headers=None, cookies=None, timeout=None):
+    def post(path, *, json=None, data=None, headers=None, cookies=None, timeout=None):
         url = f"{UserService.base_url}/api/{path.lstrip('/')}"
-        # ensure Host header has no port
-        hdrs = {} if headers is None else dict(headers)
-        hdrs['Host'] = 'shop_users'
         return requests.post(
             url,
             json=json,
-            headers=hdrs,
+            data=data,
+            headers=headers,
             cookies=cookies,
-            timeout=timeout,
+            timeout=timeout
         )
         
     @staticmethod
